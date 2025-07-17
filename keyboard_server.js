@@ -76,54 +76,12 @@ function getAllowedCommands() {
         'npm run storybook',
         'yarn storybook',
         'pnpm storybook',
-        'npx storybook dev'
+        'npx storybook dev',
+        'git pull origin main',
     ];
 }
 
-function isAllowedCommand(command) {
-    const trimmedCommand = command.trim();
-    const allowedCommands = getAllowedCommands();
-    
-    // Check exact matches first
-    if (allowedCommands.includes(trimmedCommand)) {
-        return true;
-    }
-    
-    // Check if command starts with allowed patterns (for commands with arguments)
-    const allowedPatterns = [
-        // NPM with additional args
-        /^npm run (dev|start|build|serve|preview|lint|test|type-check)(\s+.*)?$/,
-        /^npm (install|ci)(\s+.*)?$/,
-        
-        // Yarn with additional args
-        /^yarn (dev|start|build|serve|preview|lint|test|type-check)(\s+.*)?$/,
-        /^yarn (install)?(\s+.*)?$/,
-        
-        // PNPM with additional args
-        /^pnpm (dev|start|build|serve|preview|lint|test|type-check)(\s+.*)?$/,
-        /^pnpm (install|i)(\s+.*)?$/,
-        
-        // NPX project creation with args
-        /^npx create-(react|next)-app(\s+.*)?$/,
-        /^npm create (react|next)-app(\s+.*)?$/,
-        /^yarn create (react|next)-app(\s+.*)?$/,
-        /^pnpm create (react|next)-app(\s+.*)?$/,
-        
-        // Vite with args
-        /^(npm run |yarn |pnpm |npx )?vite(\s+(dev|build|preview))?(\s+.*)?$/,
-        
-        // Next.js with args
-        /^npx next (dev|start|build|lint)(\s+.*)?$/,
-        
-        // React scripts with args
-        /^npx react-scripts (start|build|test)(\s+.*)?$/,
-        
-        // Storybook with args
-        /^(npm run |yarn |pnpm |npx )storybook(\s+(dev|build))?(\s+.*)?$/
-    ];
-    
-    return allowedPatterns.some(pattern => pattern.test(trimmedCommand));
-}
+
 
 
 
