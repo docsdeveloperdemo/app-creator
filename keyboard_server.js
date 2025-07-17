@@ -11,8 +11,6 @@ const FILE_PROTECTION_CONFIG = {
     backupDir: path.join(process.cwd(), '.file-backups'),
     protectedFiles: [
         'keyboard_server.js',
-        'package.json',
-        'package-lock.json',
         '.env',
         '.gitignore'
     ],
