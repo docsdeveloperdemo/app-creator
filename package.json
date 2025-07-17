@@ -4,13 +4,9 @@
   "description": "A simple Node.js server that responds with 'Hello World'.",
   "main": "src/server.js",
   "scripts": {
-    "start": "npm install && node server.js",
-    "dev": "npm install && node setup-ollama.js && node server.js",
-    "serve": "node server.js",
-    "setup-ollama": "node setup-ollama.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "@google-cloud/workstations": "^2.1.0",
     "axios": "^1.9.0",
     "dotenv": "^16.5.0",
     "express": "^4.17.1",

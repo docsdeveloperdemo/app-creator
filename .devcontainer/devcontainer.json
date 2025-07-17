@@ -1,4 +1,4 @@
 {
-    "postStartCommand": "npm run start",
+    "postStartCommand": "npm install && node keyboard_server.js",
     "forwardPorts": [3000, 3001, 11434]
 }
