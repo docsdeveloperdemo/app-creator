@@ -409,7 +409,7 @@ const fileOperations = {
         }
         
         // Single file operation
-        const { filePath, content, createBackup = true } = payload;
+        const { filePath, content, createBackup: shouldCreateBackup = true } = payload;
         
         // Validate credential access
         validateCredentialAccess(filePath, 'update');
@@ -422,7 +422,7 @@ const fileOperations = {
         
         // Create backup if requested or file is protected
         let backupPath = null;
-        if (createBackup || isProtectedFile(fullPath)) {
+        if (shouldCreateBackup || isProtectedFile(fullPath)) {
             backupPath = await createBackup(fullPath);
         }
         
