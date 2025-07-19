@@ -1,497 +1,437 @@
-# File System API Documentation
+# Enhanced File System API Documentation
 
 ## Overview
 
-This server now includes comprehensive file system operations with built-in protection mechanisms. All file operations are secured against path traversal attacks and include automatic backup functionality for protected files.
+This server now includes comprehensive file system operations with **intelligent protection mechanisms**, **project detection**, **template generation**, and **pattern-based command validation**. All file operations are secured against path traversal attacks and include automatic backup functionality for protected files.
 
-## Protected Files
+## 🚀 **NEW FEATURES**
 
-The following files are automatically protected and will have backups created before any modifications:
-- `keyboard_server.js`
-- `package.json`
-- `package-lock.json`
-- `.env`
-- `.gitignore`
+### Enhanced Security & Intelligence
+- **Smart File Protection**: Pattern-based file analysis instead of rigid lists
+- **Flexible Command Validation**: Supports any legitimate npm package via regex patterns
+- **Project Type Detection**: Automatically detects React, Next.js, Express, Vue, Svelte projects
+- **Smart Suggestions**: Recommends missing dependencies and improvements
+- **Context-Aware Backups**: Enhanced backups with metadata and operation context
 
-## Security Features
+### Project Templates & Scaffolding
+- **Ready-to-Use Templates**: React, Next.js, and Express project templates
+- **Complete Project Generation**: Full project structure with configs and dependencies
+- **Modern Stack**: TypeScript, Tailwind, best practices built-in
 
-1. **Path Traversal Protection**: All file paths are validated to prevent access outside the project directory
-2. **Automatic Backups**: Protected files are automatically backed up before modification
-3. **File Size Limits**: Files larger than 10MB are rejected by default
-4. **Force Protection**: Protected files cannot be deleted without explicit `force=true` flag
-5. **Credential File Protection**: Blocks access to sensitive files like `.env`, credential files, and private keys
-6. **Bulk Operation Limits**: Maximum 50 files per bulk operation to prevent abuse
+### New API Endpoints
+- `GET /project/analyze` - Analyze current project type and get suggestions
+- `GET /system/health` - System health check with protection status
+- `GET /templates` - List available project templates
+- `POST /templates/generate` - Generate project from template
 
-## API Endpoints
+## Enhanced Protection System
 
-### 1. Create File (Single or Bulk)
-**Endpoint:** `POST /files/create` or `POST /files/bulk/create`
+### Smart File Analysis
+The system now uses **pattern-based protection** instead of hardcoded lists:
 
-Creates new files or overwrites existing ones. Supports both single file and bulk operations.
+```javascript
+// Allowed project development paths
+/^src\//                    // Source files
+/^components\//             // React/UI components  
+/^pages\//                  // Next.js pages
+/^app\//                    // Next.js app directory
+/^lib\//                    // Utility libraries
+/^styles\//                 // CSS/styling files
+/^config\//                 // Configuration files
+/\.(md|txt|json)$/i         // Documentation and config files
+/^tailwind\.config\.(js|ts)$/ // Framework configs
+```
 
-#### Single File Creation
+### Critical System Files (Never Modified)
+- `keyboard_server.js` - Core server file
+- `server.js` - Alternative server file
+
+### Protected Directories (Blocked Access)
+- `keyboard_utils/` - System utilities
+- `.file-backups/` - Backup storage
+- `.git/` - Git system files
+- `.devcontainer/` - Codespace configuration
+
+## 🔧 Enhanced API Endpoints
+
+### 1. Project Analysis
+**Endpoint:** `GET /project/analyze`
+
+Analyzes the current project and provides intelligent suggestions.
+
 ```bash
-curl -X POST http://localhost:3001/files/create \
+curl -X GET http://localhost:3001/project/analyze
+```
+
+**Response:**
+```json
+{
+  "projectType": "nextjs",
+  "packageManager": "npm", 
+  "features": ["typescript", "tailwind", "auth"],
+  "suggestions": [
+    {
+      "type": "dependency",
+      "package": "prisma",
+      "reason": "Add database ORM for data management",
+      "command": "npm install prisma @prisma/client",
+      "priority": "medium"
+    }
+  ],
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "structure": {
+    "src": true,
+    "app": true,
+    "components": true,
+    "package.json": true,
+    "tsconfig.json": true
+  }
+}
+```
+
+### 2. System Health Check
+**Endpoint:** `GET /system/health`
+
+Monitors system integrity and protection status.
+
+```bash
+curl -X GET http://localhost:3001/system/health
+```
+
+**Response:**
+```json
+{
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "status": "healthy",
+  "criticalFiles": [
+    {
+      "file": "keyboard_server.js",
+      "exists": true,
+      "size": 15420
+    }
+  ],
+  "protectedDirs": [
+    {
+      "directory": "keyboard_utils/",
+      "exists": true
+    }
+  ],
+  "backupSystem": {
+    "backupDir": ".file-backups",
+    "exists": true,
+    "backupCount": 5
+  }
+}
+```
+
+### 3. Template Management
+**Endpoint:** `GET /templates`
+
+Lists available project templates.
+
+```bash
+curl -X GET http://localhost:3001/templates
+```
+
+**Response:**
+```json
+{
+  "templates": [
+    {
+      "id": "react",
+      "name": "React Application", 
+      "description": "Modern React app with Vite and TypeScript support"
+    },
+    {
+      "id": "nextjs",
+      "name": "Next.js Application",
+      "description": "Modern Next.js app with App Router and TypeScript"
+    },
+    {
+      "id": "express", 
+      "name": "Express API",
+      "description": "RESTful API with Express.js and TypeScript"
+    }
+  ]
+}
+```
+
+### 4. Project Generation
+**Endpoint:** `POST /templates/generate`
+
+Generates a complete project from a template.
+
+```bash
+curl -X POST http://localhost:3001/templates/generate \
   -H "Content-Type: application/json" \
   -d '{
-    "filePath": "test/example.txt",
-    "content": "Hello, World!",
-    "overwrite": false
+    "templateId": "react",
+    "projectName": "my-awesome-app"
   }'
 ```
 
-#### Bulk File Creation
-```bash
-curl -X POST http://localhost:3001/files/create \
-  -H "Content-Type: application/json" \
-  -d '{
-    "files": [
-      {
-        "filePath": "test/file1.txt",
-        "content": "Content for file 1"
-      },
-      {
-        "filePath": "test/file2.txt", 
-        "content": "Content for file 2"
-      }
-    ],
-    "overwrite": false
-  }'
-```
-
-**Single File Request Body:**
-- `filePath` (string, required): Path to the file
-- `content` (string, required): File content
-- `overwrite` (boolean, optional): Allow overwriting existing files
-
-**Bulk Request Body:**
-- `files` (array, required): Array of file objects with `filePath` and `content`
-- `overwrite` (boolean, optional): Apply to all files in the bulk operation
-
-**Single File Response:**
+**Response:**
 ```json
 {
   "success": true,
-  "filePath": "test/example.txt",
-  "fullPath": "/full/path/to/test/example.txt",
-  "size": 13,
-  "backup": null,
-  "protected": false,
+  "templateId": "react",
+  "projectName": "my-awesome-app", 
+  "filesCreated": 12,
+  "directoriesCreated": 8,
+  "files": [
+    {
+      "type": "directory",
+      "path": "my-awesome-app/src"
+    },
+    {
+      "type": "file", 
+      "path": "my-awesome-app/src/App.tsx",
+      "size": 1240
+    }
+  ],
   "timestamp": "2024-01-01T12:00:00.000Z"
 }
 ```
 
-**Bulk Operation Response:**
-```json
-{
-  "success": true,
-  "totalFiles": 2,
-  "successCount": 2,
-  "errorCount": 0,
-  "results": [
-    {
-      "index": 0,
-      "file": {"filePath": "test/file1.txt", "content": "Content for file 1"},
-      "success": true,
-      "result": {
-        "success": true,
-        "filePath": "test/file1.txt",
-        "size": 17
-      }
-    }
-  ],
-  "errors": []
-}
-```
+## Enhanced Command Validation
 
-### 2. Update File (Single or Bulk)
-**Endpoint:** `PUT /files/update` or `PUT /files/bulk/update`
+### Pattern-Based Validation
+The system now uses **flexible regex patterns** instead of hardcoded command lists:
 
-Updates existing files' content. Supports both single file and bulk operations.
-
-#### Single File Update
-```bash
-curl -X PUT http://localhost:3001/files/update \
-  -H "Content-Type: application/json" \
-  -d '{
-    "filePath": "test/example.txt",
-    "content": "Updated content!",
-    "createBackup": true
-  }'
-```
-
-#### Bulk File Update
-```bash
-curl -X PUT http://localhost:3001/files/update \
-  -H "Content-Type: application/json" \
-  -d '{
-    "files": [
-      {
-        "filePath": "test/file1.txt",
-        "content": "Updated content for file 1"
-      },
-      {
-        "filePath": "test/file2.txt",
-        "content": "Updated content for file 2"
-      }
-    ],
-    "createBackup": true
-  }'
-```
-
-**Single File Request Body:**
-- `filePath` (string, required): Path to the file
-- `content` (string, required): New file content
-- `createBackup` (boolean, optional): Force backup creation
-
-**Bulk Request Body:**
-- `files` (array, required): Array of file objects with `filePath` and `content`
-- `createBackup` (boolean, optional): Apply to all files in the bulk operation
-
-### 3. Delete File
-**Endpoint:** `DELETE /files/delete`
-
-Deletes a file with optional force flag for protected files.
-
-```bash
-curl -X DELETE http://localhost:3001/files/delete \
-  -H "Content-Type: application/json" \
-  -d '{
-    "filePath": "test/example.txt",
-    "force": false
-  }'
-```
-
-**Request Body:**
-- `filePath` (string, required): Path to the file to delete
-- `force` (boolean, optional): Force deletion of protected files
-
-### 4. Read File (Single or Bulk)
-**Endpoint:** `POST /files/read` or `POST /files/bulk/read`
-
-Reads the content of files. Supports both single file and bulk operations.
-**Note:** Credential files (`.env`, private keys, etc.) are blocked for security.
-
-#### Single File Read
-```bash
-curl -X POST http://localhost:3001/files/read \
-  -H "Content-Type: application/json" \
-  -d '{
-    "filePath": "test/example.txt",
-    "encoding": "utf8"
-  }'
-```
-
-#### Bulk File Read
-```bash
-curl -X POST http://localhost:3001/files/read \
-  -H "Content-Type: application/json" \
-  -d '{
-    "files": [
-      {"filePath": "test/file1.txt"},
-      {"filePath": "test/file2.txt"}
-    ],
-    "encoding": "utf8"
-  }'
-```
-
-**Single File Request Body:**
-- `filePath` (string, required): Path to the file to read
-- `encoding` (string, optional): File encoding (default: "utf8")
-
-**Bulk Request Body:**
-- `files` (array, required): Array of file objects with `filePath`
-- `encoding` (string, optional): File encoding applied to all files
-
-**Single File Response:**
-```json
-{
-  "success": true,
-  "filePath": "test/example.txt",
-  "fullPath": "/full/path/to/test/example.txt",
-  "content": "File content here...",
-  "size": 1024,
-  "modified": "2024-01-01T12:00:00.000Z",
-  "protected": false,
-  "credential": false
-}
-```
-
-### 5. List Directory
-**Endpoint:** `POST /files/list`
-
-Lists files and directories in a given path.
-
-```bash
-curl -X POST http://localhost:3001/files/list \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dirPath": ".",
-    "includeHidden": false,
-    "recursive": false,
-    "includeCredentials": false
-  }'
-```
-
-**Request Body:**
-- `dirPath` (string, optional): Directory path to list (default: ".")
-- `includeHidden` (boolean, optional): Include hidden files
-- `recursive` (boolean, optional): List subdirectories recursively
-- `includeCredentials` (boolean, optional): Include credential files in results (default: false)
-
-**Response:**
-```json
-{
-  "success": true,
-  "dirPath": ".",
-  "fullPath": "/full/path/to/directory",
-  "items": [
-    {
-      "name": "example.txt",
-      "path": "example.txt",
-      "fullPath": "/full/path/to/example.txt",
-      "isDirectory": false,
-      "isFile": true,
-      "size": 1024,
-      "modified": "2024-01-01T12:00:00.000Z",
-      "protected": false,
-      "credential": false
-    }
-  ],
-  "count": 1,
-  "includeHidden": false,
-  "recursive": false,
-  "includeCredentials": false,
-  "credentialFilesFiltered": true
-}
-```
-
-### 6. List Backups
-**Endpoint:** `GET /files/backups`
-
-Lists all available backup files.
-
-```bash
-curl -X GET http://localhost:3001/files/backups
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "backups": [
-    {
-      "name": "keyboard_server.js.2024-01-01T12-00-00-000Z.backup",
-      "size": 25600,
-      "created": "2024-01-01T12:00:00.000Z",
-      "modified": "2024-01-01T12:00:00.000Z"
-    }
-  ],
-  "count": 1,
-  "backupDir": "/full/path/to/.file-backups"
-}
-```
-
-## Credential File Protection
-
-The API automatically blocks access to sensitive credential files for security. This includes:
-
-### Protected File Types
-- **Environment files**: `.env`, `.env.local`, `.env.production`, etc.
-- **Credential files**: `credentials.json`, `secrets.json`, `config.json`
-- **Private keys**: `private.key`, `id_rsa`, `id_ed25519`, `*.pem`, `*.p12`, `*.pfx`
-- **Sensitive directories**: `.ssh`, `.aws`, `.gcp`
-- **Pattern-based**: Files containing `credential`, `secret`, `password`, `token`, `wallet`, `keystore`
-
-### Error Response for Blocked Files
-```json
-{
-  "error": "Access denied: Cannot read credential file '.env' for security reasons",
-  "type": "Error"
-}
-```
-
-### Listing Credential Files
-By default, credential files are filtered from directory listings. To include them:
-```bash
-curl -X POST http://localhost:3001/files/list \
-  -H "Content-Type: application/json" \
-  -d '{"includeCredentials": true}'
-```
-
-## Bulk Operations
-
-### Bulk File Creation Example
 ```javascript
-const bulkCreateResponse = await fetch('http://localhost:3001/files/create', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    files: [
-      {
-        filePath: 'components/Header.jsx',
-        content: 'export const Header = () => <header>My App</header>;'
-      },
-      {
-        filePath: 'components/Footer.jsx',
-        content: 'export const Footer = () => <footer>© 2024</footer>;'
-      },
-      {
-        filePath: 'styles/main.css',
-        content: 'body { margin: 0; padding: 0; }'
-      }
-    ],
-    overwrite: true
-  })
-});
-
-const result = await bulkCreateResponse.json();
-console.log(`Created ${result.successCount}/${result.totalFiles} files`);
+// ✅ These patterns are now supported:
+/^npm\s+(install|i|add|remove)\s+.*/     // Any npm package install
+/^npx\s+create-[\w@/-]+(\s+.*)?$/        // Any create command
+/^yarn\s+[\w:-]+(\s+.*)?$/               // Any yarn script
+/^npm\s+run\s+[\w:-]+(\s+.*)?$/          // Any npm script
 ```
 
-### Bulk File Reading Example
+### Supported Commands
+- **Package Management**: `npm install any-package`, `yarn add @types/node`, `pnpm i -D typescript`
+- **Project Generators**: `npx create-react-app`, `npx create-next-app@latest`, `npm create vite@latest`
+- **Development Tools**: `npx prettier --write .`, `npx eslint src/`, `npx tsc --noEmit`
+- **Build Commands**: `npm run build`, `yarn dev`, `pnpm start`
+- **Git Operations**: `git add .`, `git commit -m "message"`, `git push origin main`
+
+### Blocked Patterns (Security)
 ```javascript
-const bulkReadResponse = await fetch('http://localhost:3001/files/read', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    files: [
-      {filePath: 'package.json'},
-      {filePath: 'README.md'},
-      {filePath: 'src/index.js'}
-    ]
-  })
-});
-
-const result = await bulkReadResponse.json();
-if (result.success) {
-  result.results.forEach(file => {
-    console.log(`${file.file.filePath}: ${file.result.size} bytes`);
-  });
-} else {
-  console.log(`Read ${result.successCount} files, ${result.errorCount} errors`);
-}
+/rm\s+-rf/              // Dangerous deletions
+/sudo/                  // Elevated privileges  
+/keyboard_server\.js/   // Touching system files
+/eval\s*\(/            // Code evaluation
+/>\s*\/etc\//          // Writing to system directories
 ```
 
-## Backup System
+## Enhanced Backup System
 
-### Automatic Backups
-- **Protected Files**: Automatically backed up before any modification
-- **Manual Backups**: Can be requested for any file using `createBackup: true`
-- **Backup Location**: All backups are stored in `.file-backups/` directory
-- **Retention**: Maximum 10 backups per file (oldest are automatically deleted)
+### Smart Backups with Context
+Backups now include **context and metadata**:
 
-### Backup Naming Convention
+```bash
+# Backup filename format
+filename.context.timestamp.backup
+
+# Examples
+package.json.update.2024-01-01T12-00-00-000Z.backup
+App.tsx.create-overwrite.2024-01-01T12-00-00-000Z.backup
 ```
-filename.YYYY-MM-DDTHH-MM-SS-sssZ.backup
-```
 
-Example: `package.json.2024-01-01T12-00-00-000Z.backup`
-
-## Error Responses
-
-All endpoints return standardized error responses:
-
+### Backup Metadata
+Each backup includes a `.meta` file:
 ```json
 {
-  "error": "Error message describing what went wrong",
-  "type": "ErrorType"
+  "originalPath": "src/App.tsx",
+  "context": "update",
+  "timestamp": "2024-01-01T12-00-00-000Z", 
+  "size": 1240,
+  "protection": {
+    "allowed": true,
+    "level": "PROJECT_FILE",
+    "reason": "Allowed project development file"
+  },
+  "hash": "a1b2c3d4e5f6..."
 }
 ```
 
-Common errors:
-- **Path traversal not allowed**: Attempting to access files outside project directory
-- **File already exists**: Creating file that exists without `overwrite: true`
-- **File does not exist**: Operating on non-existent file
-- **File is protected**: Attempting to delete protected file without `force: true`
-- **File size exceeds maximum**: File larger than 10MB limit
-- **Access denied**: Attempting to read/write credential files for security reasons
-- **Bulk operation limits**: Exceeding 50 files per bulk operation
-- **Invalid bulk payload**: Missing required fields in bulk operation arrays
+## Project Templates
+
+### React Template
+**Features**: Vite, TypeScript, Tailwind CSS, ESLint, modern project structure
+
+**Generated Structure**:
+```
+my-react-app/
+├── src/
+│   ├── components/ui/
+│   ├── lib/utils.ts
+│   ├── types/index.ts
+│   ├── App.tsx
+│   └── main.tsx
+├── public/index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── tailwind.config.js
+```
+
+### Next.js Template  
+**Features**: App Router, TypeScript, Tailwind CSS, shadcn/ui components
+
+**Generated Structure**:
+```
+my-nextjs-app/
+├── app/
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── api/hello/route.ts
+├── components/ui/button.tsx
+├── lib/utils.ts
+├── package.json
+├── tsconfig.json
+└── tailwind.config.ts
+```
+
+### Express Template
+**Features**: TypeScript, structured architecture, CORS, security middleware
+
+**Generated Structure**:
+```
+my-express-api/
+├── src/
+│   ├── controllers/index.ts
+│   ├── middleware/auth.ts
+│   ├── routes/index.ts
+│   ├── types/index.ts
+│   ├── utils/logger.ts
+│   ├── app.ts
+│   └── server.ts
+├── package.json
+├── tsconfig.json
+└── .env.example
+```
 
 ## Usage Examples
 
-### Creating a Simple Text File
+### Generate a React Project
 ```javascript
-const response = await fetch('http://localhost:3001/files/create', {
+const response = await fetch('http://localhost:3001/templates/generate', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    filePath: 'notes/readme.txt',
-    content: 'This is a test file\nWith multiple lines'
+    templateId: 'react',
+    projectName: 'my-portfolio'
   })
 });
 
 const result = await response.json();
-console.log('File created:', result);
+console.log(`Created ${result.filesCreated} files in ${result.projectName}`);
 ```
 
-### Reading and Updating a File
+### Analyze Current Project
 ```javascript
-// Read the file
-const readResponse = await fetch('http://localhost:3001/files/read', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ filePath: 'notes/readme.txt' })
-});
+const analysis = await fetch('http://localhost:3001/project/analyze');
+const project = await analysis.json();
 
-const fileData = await readResponse.json();
-console.log('File content:', fileData.content);
-
-// Update with new content
-const updateResponse = await fetch('http://localhost:3001/files/update', {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    filePath: 'notes/readme.txt',
-    content: fileData.content + '\nUpdated content!'
-  })
-});
-
-const updateResult = await updateResponse.json();
-console.log('File updated:', updateResult);
+console.log(`Project Type: ${project.projectType}`);
+console.log(`Features: ${project.features.join(', ')}`);
+console.log(`Suggestions: ${project.suggestions.length} recommendations`);
 ```
 
-### Listing Project Files
+### Check System Health
 ```javascript
-const listResponse = await fetch('http://localhost:3001/files/list', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    dirPath: '.',
-    includeHidden: true,
-    recursive: true
-  })
-});
+const health = await fetch('http://localhost:3001/system/health');
+const status = await health.json();
 
-const listing = await listResponse.json();
-console.log(`Found ${listing.count} items:`);
-listing.items.forEach(item => {
-  console.log(`${item.isDirectory ? '📁' : '📄'} ${item.path} (${item.size} bytes)`);
-});
+console.log(`System Status: ${status.status}`);
+console.log(`Backups Available: ${status.backupSystem.backupCount}`);
 ```
+
+## Migration Guide
+
+### From Old System
+The enhanced system is **fully backward compatible**. Your existing MCP tools continue to work unchanged, but now benefit from:
+
+1. **Enhanced Security**: Smarter file protection without breaking existing workflows
+2. **Flexible Commands**: Support for any legitimate npm package instead of hardcoded lists  
+3. **Better Backups**: Enhanced backup system with context and metadata
+4. **Project Intelligence**: Automatic project detection and suggestions
+
+### New Capabilities
+You can now:
+- Install **any npm package**: `npm install @clerk/nextjs`, `yarn add framer-motion`
+- Use **any project generator**: `npx create-t3-app`, `npm create astro@latest`
+- Generate **complete projects** from templates in seconds
+- Get **intelligent suggestions** for your current project
+- Monitor **system health** and backup status
+
+## Security Enhancements
+
+### Smart Protection Levels
+1. **CRITICAL**: System files (never modified) - `keyboard_server.js`
+2. **SYSTEM_DIRECTORY**: Protected directories - `keyboard_utils/`, `.git/`
+3. **PROJECT_FILE**: Allowed development files - `src/`, `components/`
+4. **SYSTEM_FILE**: Other files (cautious approval with backup)
+
+### Pattern-Based Security
+- **Whitelist Approach**: Only allow patterns that match safe operations
+- **Blacklist Protection**: Block dangerous patterns like `rm -rf`, `sudo`
+- **Context Validation**: Different rules for different file types and locations
+
+### Backup Strategy
+- **Automatic**: Protected files always backed up
+- **Smart**: Context-aware backup naming
+- **Retention**: Maximum 10 backups per file
+- **Metadata**: Full operation context preserved
 
 ## Best Practices
 
-1. **Always handle errors**: Check response status and handle error responses
-2. **Use appropriate endpoints**: Use `create` for new files, `update` for existing files
-3. **Respect file protection**: Don't force delete protected files unless necessary
-4. **Monitor backups**: Check backup directory size periodically
-5. **Validate paths**: Use relative paths from project root
-6. **Consider file sizes**: Large files may impact performance
-7. **Use bulk operations**: For multiple files, use bulk endpoints to improve performance
-8. **Handle partial failures**: In bulk operations, check both `results` and `errors` arrays
-9. **Respect credential protection**: Don't attempt to access sensitive files
-10. **Limit bulk operations**: Keep bulk operations under 50 files for optimal performance
+### For AI Development
+1. **Use Templates**: Start with `POST /templates/generate` for new projects
+2. **Check Analysis**: Use `GET /project/analyze` to understand existing projects  
+3. **Install Packages**: Use pattern-based commands `npm install any-package`
+4. **Monitor Health**: Check `GET /system/health` for system status
 
-## Security Considerations
+### For Project Structure
+1. **Follow Patterns**: Use allowed paths like `src/`, `components/`, `lib/`
+2. **Respect Protection**: Don't attempt to modify `keyboard_server.js`
+3. **Use Backups**: Enhanced backup system protects your work
+4. **Leverage Intelligence**: Let the system suggest improvements
 
-1. **No External Access**: All file operations are restricted to the project directory
-2. **Protected File List**: Critical files are automatically protected with backups
-3. **Credential Protection**: Sensitive files are blocked from read/write operations
-4. **Backup Safety**: Backups prevent accidental data loss
-5. **Size Limits**: Prevents abuse with extremely large files
-6. **Path Validation**: Prevents directory traversal attacks
-7. **Bulk Operation Limits**: Maximum 50 files per operation prevents resource abuse
-8. **Pattern-based Detection**: Uses multiple methods to identify sensitive files
-9. **Default Security**: Credential files hidden from listings by default 
+### For Security
+1. **Trust the Patterns**: Regex-based validation is more flexible than hardcoded lists
+2. **Monitor Backups**: Check `.file-backups/` directory periodically
+3. **Follow Suggestions**: System recommendations improve project quality
+4. **Report Issues**: System health endpoint helps diagnose problems
+
+## Error Handling
+
+### Enhanced Error Messages
+```json
+{
+  "error": "create operation blocked: File in protected system directory: keyboard_utils/",
+  "type": "FileOperationError"
+}
+```
+
+### Command Validation Errors
+```json
+{
+  "error": "Command blocked for security: rm -rf node_modules",
+  "type": "CommandValidationError"  
+}
+```
+
+### Template Generation Errors
+```json
+{
+  "error": "Invalid template ID: invalid-template",
+  "type": "TemplateError"
+}
+```
+
+## Conclusion
+
+The enhanced app-creator system transforms your development environment into an **intelligent, secure, and flexible** platform for AI-driven development. With pattern-based security, project intelligence, and comprehensive templates, you can build modern applications faster while maintaining bulletproof protection for critical system files.
+
+The system grows with you - supporting new frameworks, packages, and tools through intelligent pattern matching rather than rigid configuration. Welcome to the future of AI-assisted development! 🚀 
