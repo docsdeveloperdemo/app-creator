@@ -3,17 +3,74 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { retrievePackageJson, retrieveEnvironmentVariableKeys, retrieveDocResources } = require('./keyboard_utils/retrieve_resources/keybooard_resources');
+const { PROJECT_TEMPLATES } = require('./project-templates');
 
-// File protection and backup utilities - Functional approach
+// Enhanced File protection and backup utilities with intelligent pattern matching
 
-// Configuration constants
+// Enhanced Configuration constants
 const FILE_PROTECTION_CONFIG = {
     backupDir: path.join(process.cwd(), '.file-backups'),
+    
+    // Core system files that should NEVER be modified
+    criticalSystemFiles: [
+        'keyboard_server.js',
+        'server.js'
+    ],
+    
+    // Protected files with backup requirement
     protectedFiles: [
         'keyboard_server.js',
+        'server.js', 
         '.env',
+        '.env.local',
+        '.env.development',
+        '.env.production',
         '.gitignore'
     ],
+    
+    // Protected directories
+    protectedDirectories: [
+        'keyboard_utils/',
+        'keyboard_utils/retrieve_resources/',
+        '.file-backups/',
+        '.git/',
+        '.devcontainer/'
+    ],
+    
+    // Allow project development in these paths
+    allowedProjectPaths: [
+        /^src\//,
+        /^public\//,
+        /^pages\//,
+        /^app\//,
+        /^components\//,
+        /^styles\//,
+        /^lib\//,
+        /^utils\/(?!keyboard)/,  // utils/ but not keyboard_utils/
+        /^hooks\//,
+        /^types\//,
+        /^__tests__\//,
+        /^docs\//,
+        /^config\//,
+        /^middleware\//,
+        /^models\//,
+        /^routes\//,
+        /^services\//,
+        /^controllers\//,
+        /\.(md|txt|json)$/i,
+        /^tailwind\.config\.(js|ts)$/,
+        /^next\.config\.(js|ts)$/,
+        /^tsconfig\.json$/,
+        /^postcss\.config\.(js|ts)$/,
+        /^vite\.config\.(js|ts)$/,
+        /^webpack\.config\.(js|ts)$/,
+        /^babel\.config\.(js|json)$/,
+        /^\.eslintrc\.(js|json)$/,
+        /^\.prettierrc(\.(js|json))?$/,
+        /^jest\.config\.(js|ts)$/,
+        /^vitest\.config\.(js|ts)$/
+    ],
+
     credentialFiles: [
         '.env',
         '.env.local',
@@ -48,7 +105,53 @@ const FILE_PROTECTION_CONFIG = {
     maxFileSize: 10 * 1024 * 1024 // 10MB
 };
 
-// Utility functions
+// Smart File Analysis
+const analyzeFilePath = (filePath) => {
+    const normalizedPath = path.normalize(filePath);
+    const fileName = path.basename(filePath);
+    
+    // Critical system files - never allow modification
+    if (FILE_PROTECTION_CONFIG.criticalSystemFiles.includes(fileName)) {
+        return {
+            allowed: false,
+            level: 'CRITICAL',
+            reason: 'Critical system file cannot be modified'
+        };
+    }
+    
+    // Check if it's in allowed project paths
+    const isAllowedProject = FILE_PROTECTION_CONFIG.allowedProjectPaths.some(pattern =>
+        pattern.test(normalizedPath)
+    );
+    
+    if (isAllowedProject) {
+        return {
+            allowed: true,
+            level: 'PROJECT_FILE',
+            reason: 'Allowed project development file'
+        };
+    }
+    
+    // Check protected directories
+    for (const protectedDir of FILE_PROTECTION_CONFIG.protectedDirectories) {
+        if (normalizedPath.startsWith(protectedDir)) {
+            return {
+                allowed: false,
+                level: 'SYSTEM_DIRECTORY',
+                reason: `File in protected system directory: ${protectedDir}`
+            };
+        }
+    }
+    
+    // Default to cautious approval for other files
+    return {
+        allowed: true,
+        level: 'SYSTEM_FILE',
+        reason: 'System file - requires careful handling'
+    };
+};
+
+// Enhanced Utility functions
 const ensureBackupDirectory = () => {
     if (!fs.existsSync(FILE_PROTECTION_CONFIG.backupDir)) {
         fs.mkdirSync(FILE_PROTECTION_CONFIG.backupDir, { recursive: true });
@@ -58,6 +161,26 @@ const ensureBackupDirectory = () => {
 const isProtectedFile = (filePath) => {
     const fileName = path.basename(filePath);
     return FILE_PROTECTION_CONFIG.protectedFiles.includes(fileName);
+};
+
+const isCriticalFile = (filePath) => {
+    const fileName = path.basename(filePath);
+    return FILE_PROTECTION_CONFIG.criticalSystemFiles.includes(fileName);
+};
+
+const validateFileOperation = (filePath, operation = 'read') => {
+    const analysis = analyzeFilePath(filePath);
+    
+    if (!analysis.allowed) {
+        throw new Error(`${operation} operation blocked: ${analysis.reason}`);
+    }
+    
+    // Extra protection for critical files
+    if (analysis.level === 'CRITICAL') {
+        throw new Error(`Critical system file cannot be modified: ${path.basename(filePath)}`);
+    }
+    
+    return analysis;
 };
 
 const isCredentialFile = (filePath) => {
@@ -124,7 +247,7 @@ const cleanupOldBackups = async (fileName) => {
     }
 };
 
-const createBackup = async (filePath) => {
+const createSmartBackup = async (filePath, context = 'update') => {
     try {
         if (!fs.existsSync(filePath)) {
             return null;
@@ -134,21 +257,38 @@ const createBackup = async (filePath) => {
 
         const fileName = path.basename(filePath);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupFileName = `${fileName}.${timestamp}.backup`;
+        const backupFileName = `${fileName}.${context}.${timestamp}.backup`;
         const backupPath = path.join(FILE_PROTECTION_CONFIG.backupDir, backupFileName);
 
         // Copy file to backup location
         fs.copyFileSync(filePath, backupPath);
 
+        // Create metadata
+        const metadata = {
+            originalPath: filePath,
+            context: context,
+            timestamp: timestamp,
+            size: fs.statSync(filePath).size,
+            protection: analyzeFilePath(filePath),
+            hash: require('crypto').createHash('md5').update(fs.readFileSync(filePath)).digest('hex')
+        };
+
+        fs.writeFileSync(`${backupPath}.meta`, JSON.stringify(metadata, null, 2));
+
         // Clean up old backups
         await cleanupOldBackups(fileName);
 
-        console.log(`📦 Created backup: ${backupFileName}`);
+        console.log(`📦 Smart backup created: ${backupFileName} (${context})`);
         return backupPath;
     } catch (error) {
         console.error(`❌ Failed to create backup for ${filePath}:`, error.message);
         throw error;
     }
+};
+
+// Legacy function for backward compatibility
+const createBackup = async (filePath) => {
+    return createSmartBackup(filePath, 'legacy');
 };
 
 // Bulk operation utilities
@@ -232,82 +372,245 @@ const validateBulkPayload = (payload, requiredFields) => {
 // Initialize backup directory
 ensureBackupDirectory();
 
-// Command whitelist for security - only allow React/Next.js project commands
-function getAllowedCommands() {
-    return [
-        // NPM commands
-        'npm run dev',
-        'npm run start',
-        'npm run build',
-        'npm run serve',
-        'npm run preview',
-        'npm install',
-        'npm ci',
-        'npm run lint',
-        'npm run test',
-        'npm run type-check',
-        
-        // Yarn commands
-        'yarn dev',
-        'yarn start',
-        'yarn build',
-        'yarn serve',
-        'yarn preview',
-        'yarn install',
-        'yarn',
-        'yarn lint',
-        'yarn test',
-        'yarn type-check',
-        
-        // PNPM commands
-        'pnpm dev',
-        'pnpm start',
-        'pnpm build',
-        'pnpm serve',
-        'pnpm preview',
-        'pnpm install',
-        'pnpm i',
-        'pnpm lint',
-        'pnpm test',
-        'pnpm type-check',
-        
-        // Project creation commands
-        'npx create-react-app',
-        'npx create-next-app',
-        'npm create react-app',
-        'npm create next-app',
-        'yarn create react-app',
-        'yarn create next-app',
-        'pnpm create react-app',
-        'pnpm create next-app',
-        
-        // Vite commands
-        'npm run vite',
-        'yarn vite',
-        'pnpm vite',
-        'npx vite',
-        'npx vite build',
-        'npx vite preview',
-        
-        // Next.js specific
-        'npx next dev',
-        'npx next start',
-        'npx next build',
-        'npx next lint',
-        
-        // React scripts
-        'npx react-scripts start',
-        'npx react-scripts build',
-        'npx react-scripts test',
-        
-        // Development server alternatives
-        'npm run storybook',
-        'yarn storybook',
-        'pnpm storybook',
-        'npx storybook dev',
-        'git pull origin main',
+// Enhanced Pattern-Based Command Validation System
+const SAFE_COMMAND_PATTERNS = {
+    // Package management
+    npm: [
+        /^npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)\s+.*/,
+        /^npm\s+run\s+[\w:-]+(\s+.*)?$/,
+        /^npm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^npm\s+ci(\s+.*)?$/
+    ],
+    
+    yarn: [
+        /^yarn\s+(add|remove|install|upgrade|outdated|audit)\s+.*/,
+        /^yarn\s+[\w:-]+(\s+.*)?$/,
+        /^yarn\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^yarn(\s+install)?$/
+    ],
+    
+    pnpm: [
+        /^pnpm\s+(add|remove|install|update|outdated|audit)\s+.*/,
+        /^pnpm\s+[\w:-]+(\s+.*)?$/,
+        /^pnpm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^pnpm\s+i(\s+.*)?$/
+    ],
+    
+    // Project generators - allow any create command
+    generators: [
+        /^npx\s+create-[\w@/-]+(@[\w.-]+)?(\s+.*)?$/,
+        /^npm\s+create\s+[\w@/-]+(\s+.*)?$/,
+        /^yarn\s+create\s+[\w@/-]+(\s+.*)?$/,
+        /^pnpm\s+create\s+[\w@/-]+(\s+.*)?$/
+    ],
+    
+    // Development tools
+    tools: [
+        /^npx\s+[\w@/-]+(\s+[\w@/.=:-]*)*$/,
+        /^node\s+[\w./-]+\.js(\s+.*)?$/,
+        /^npx\s+(next|vite|react-scripts|storybook)\s+[\w-]+(\s+.*)?$/
+    ],
+    
+    // Safe file operations
+    fileOps: [
+        /^ls(\s+-[la]+)?(\s+.*)?$/,
+        /^cat\s+[\w./-]+$/,
+        /^head\s+(-n\s+\d+\s+)?[\w./-]+$/,
+        /^tail\s+(-n\s+\d+\s+)?[\w./-]+$/,
+        /^mkdir\s+-p\s+[\w./-]+$/
+    ],
+    
+    // Git operations (safe ones)
+    git: [
+        /^git\s+(status|log|diff|show)(\s+.*)?$/,
+        /^git\s+(add|commit|push|pull)\s+.*$/,
+        /^git\s+(checkout|branch)\s+[\w/-]+$/,
+        /^git\s+clone\s+https:\/\/.*$/
+    ]
+};
+
+const BLOCKED_PATTERNS = [
+    /rm\s+-rf/,                    // Dangerous deletions
+    /sudo/,                        // Elevated privileges
+    /chmod\s+[0-7]+/,             // Permission changes
+    /chown/,                       // Ownership changes
+    /curl.*\|\s*sh/,              // Piping to shell
+    /wget.*\|\s*sh/,              // Piping to shell
+    /keyboard_server\.js/,         // Touching keyboard server
+    /keyboard_utils/,              // Touching keyboard utilities
+    />\s*\/etc\//,                // Writing to system directories
+    /\/bin\/(?!sh)/,              // Direct binary execution
+    /\/usr\/bin\//,               // System binaries
+    /eval\s*\(/,                  // Code evaluation
+    /exec\s*\(/,                  // Code execution
+    /spawn\s*\(/,                 // Process spawning
+    /\.\.\/\.\.\//                // Directory traversal
+];
+
+const validateCommand = (command) => {
+    const cmd = command.trim();
+    
+    // Block dangerous patterns first
+    for (const pattern of BLOCKED_PATTERNS) {
+        if (pattern.test(cmd)) {
+            throw new Error(`Command blocked for security: ${cmd}`);
+        }
+    }
+    
+    // Check if command matches safe patterns
+    const allPatterns = Object.values(SAFE_COMMAND_PATTERNS).flat();
+    const isAllowed = allPatterns.some(pattern => pattern.test(cmd));
+    
+    if (isAllowed) {
+        return { allowed: true, safe: true };
+    }
+    
+    throw new Error(`Command not in safe patterns: ${cmd}`);
+};
+
+// Intelligent Project Detection System
+const detectProjectType = () => {
+    let projectType = 'unknown';
+    let packageManager = 'npm';
+    let features = [];
+    
+    // Detect package manager
+    if (fs.existsSync('yarn.lock')) packageManager = 'yarn';
+    else if (fs.existsSync('pnpm-lock.yaml')) packageManager = 'pnpm';
+    
+    // Read package.json to determine framework
+    if (fs.existsSync('package.json')) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+            
+            // Framework detection
+            if (deps.next) {
+                projectType = 'nextjs';
+                if (deps['@trpc/server']) features.push('trpc');
+                if (deps['next-auth']) features.push('auth');
+                if (deps['@next/font']) features.push('font-optimization');
+            } else if (deps.react) {
+                projectType = 'react';
+                if (deps['react-router-dom']) features.push('routing');
+                if (deps.vite) features.push('vite');
+            } else if (deps.express) {
+                projectType = 'express';
+                if (deps.prisma) features.push('database');
+                if (deps.cors) features.push('cors');
+            } else if (deps.vue) {
+                projectType = 'vue';
+                if (deps.nuxt) features.push('nuxt');
+            } else if (deps.svelte) {
+                projectType = 'svelte';
+                if (deps['@sveltejs/kit']) features.push('sveltekit');
+            }
+            
+            // Common features
+            if (deps.typescript) features.push('typescript');
+            if (deps.tailwindcss) features.push('tailwind');
+            if (deps.prisma) features.push('prisma');
+            if (deps.eslint) features.push('linting');
+            if (deps.prettier) features.push('formatting');
+            if (deps.jest || deps.vitest) features.push('testing');
+            if (deps['@storybook/react']) features.push('storybook');
+            if (deps.framer-motion) features.push('animations');
+            
+        } catch (error) {
+            console.warn('Could not parse package.json:', error.message);
+        }
+    }
+    
+    return { projectType, packageManager, features };
+};
+
+const getProjectSuggestions = (projectInfo) => {
+    const suggestions = [];
+    const { projectType, features } = projectInfo;
+    
+    if (projectType === 'react' && !features.includes('routing')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'react-router-dom',
+            reason: 'Add client-side routing to React app',
+            command: 'npm install react-router-dom',
+            priority: 'medium'
+        });
+    }
+    
+    if (projectType === 'nextjs' && !features.includes('auth')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'next-auth',
+            reason: 'Add authentication to Next.js app',
+            command: 'npm install next-auth',
+            priority: 'medium'
+        });
+    }
+    
+    if (!features.includes('tailwind') && (projectType === 'react' || projectType === 'nextjs')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'tailwindcss',
+            reason: 'Add Tailwind CSS for styling',
+            command: 'npm install -D tailwindcss postcss autoprefixer',
+            priority: 'high'
+        });
+    }
+    
+    if (!features.includes('typescript') && (projectType !== 'unknown')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'typescript',
+            reason: 'Add TypeScript for type safety',
+            command: 'npm install -D typescript @types/node',
+            priority: 'medium'
+        });
+    }
+    
+    if (!features.includes('linting') && (projectType !== 'unknown')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'eslint',
+            reason: 'Add ESLint for code quality',
+            command: 'npm install -D eslint',
+            priority: 'low'
+        });
+    }
+    
+    if (projectType === 'express' && !features.includes('cors')) {
+        suggestions.push({
+            type: 'dependency',
+            package: 'cors',
+            reason: 'Add CORS support for API',
+            command: 'npm install cors',
+            priority: 'high'
+        });
+    }
+    
+    return suggestions;
+};
+
+const scanProjectStructure = () => {
+    const structure = {};
+    
+    // Check for common directories
+    const commonDirs = ['src', 'public', 'pages', 'app', 'components', 'lib', 'utils', 'styles'];
+    commonDirs.forEach(dir => {
+        structure[dir] = fs.existsSync(dir);
+    });
+    
+    // Check for important files
+    const importantFiles = [
+        'package.json', 'tsconfig.json', 'next.config.js', 'next.config.ts', 
+        'tailwind.config.js', 'vite.config.js', '.eslintrc.js', '.prettierrc'
     ];
-}
+    importantFiles.forEach(file => {
+        structure[file] = fs.existsSync(file);
+    });
+    
+    return structure;
+};
 
 // File system utilities
 async function handleFileOperation(req, res, operation) {
@@ -354,7 +657,8 @@ const fileOperations = {
         // Single file operation
         const { filePath, content, overwrite = false } = payload;
         
-        // Validate credential access
+        // Enhanced validation with smart file analysis
+        const analysis = validateFileOperation(filePath, 'create');
         validateCredentialAccess(filePath, 'create');
         
         const fullPath = validateFilePath(filePath);
@@ -364,11 +668,11 @@ const fileOperations = {
             throw new Error(`File ${filePath} already exists. Set overwrite=true to replace.`);
         }
         
-        // Create backup if file exists and is protected
+        // Create smart backup if file exists and needs protection
         let backupPath = null;
         if (fs.existsSync(fullPath)) {
-            if (isProtectedFile(fullPath)) {
-                backupPath = await createBackup(fullPath);
+            if (isProtectedFile(fullPath) || analysis.level === 'SYSTEM_FILE') {
+                backupPath = await createSmartBackup(fullPath, 'create-overwrite');
             }
         }
         
@@ -411,7 +715,8 @@ const fileOperations = {
         // Single file operation
         const { filePath, content, createBackup: shouldCreateBackup = true } = payload;
         
-        // Validate credential access
+        // Enhanced validation with smart file analysis
+        const analysis = validateFileOperation(filePath, 'update');
         validateCredentialAccess(filePath, 'update');
         
         const fullPath = validateFilePath(filePath);
@@ -420,10 +725,10 @@ const fileOperations = {
             throw new Error(`File ${filePath} does not exist. Use create operation instead.`);
         }
         
-        // Create backup if requested or file is protected
+        // Create smart backup if requested or file needs protection
         let backupPath = null;
-        if (shouldCreateBackup || isProtectedFile(fullPath)) {
-            backupPath = await createBackup(fullPath);
+        if (shouldCreateBackup || isProtectedFile(fullPath) || analysis.level === 'SYSTEM_FILE') {
+            backupPath = await createSmartBackup(fullPath, 'update');
         }
         
         // Write updated content
@@ -686,6 +991,155 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: error.message }));
         }
     }
+    // Enhanced API endpoints
+    else if (req.method === 'GET' && req.url === '/project/analyze') {
+        try {
+            const projectInfo = detectProjectType();
+            const suggestions = getProjectSuggestions(projectInfo);
+            
+            const analysis = {
+                ...projectInfo,
+                suggestions,
+                timestamp: new Date().toISOString(),
+                structure: scanProjectStructure()
+            };
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(analysis));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    }
+    // System health check endpoint
+    else if (req.method === 'GET' && req.url === '/system/health') {
+        try {
+            const health = {
+                timestamp: new Date().toISOString(),
+                status: 'healthy',
+                criticalFiles: FILE_PROTECTION_CONFIG.criticalSystemFiles.map(file => ({
+                    file,
+                    exists: fs.existsSync(file),
+                    size: fs.existsSync(file) ? fs.statSync(file).size : 0
+                })),
+                protectedDirs: FILE_PROTECTION_CONFIG.protectedDirectories.map(dir => ({
+                    directory: dir,
+                    exists: fs.existsSync(dir)
+                })),
+                backupSystem: {
+                    backupDir: FILE_PROTECTION_CONFIG.backupDir,
+                    exists: fs.existsSync(FILE_PROTECTION_CONFIG.backupDir),
+                    backupCount: fs.existsSync(FILE_PROTECTION_CONFIG.backupDir) ? 
+                        fs.readdirSync(FILE_PROTECTION_CONFIG.backupDir).length : 0
+                }
+            };
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(health));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    }
+    // Template management endpoints
+    else if (req.method === 'GET' && req.url === '/templates') {
+        try {
+            const templates = Object.keys(PROJECT_TEMPLATES).map(key => ({
+                id: key,
+                name: PROJECT_TEMPLATES[key].name,
+                description: PROJECT_TEMPLATES[key].description
+            }));
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ templates }));
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: error.message }));
+        }
+    }
+    else if (req.method === 'POST' && req.url === '/templates/generate') {
+        let body = '';
+        
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        
+        req.on('end', async () => {
+            try {
+                const { templateId, projectName } = JSON.parse(body);
+                
+                if (!templateId || !PROJECT_TEMPLATES[templateId]) {
+                    return res.status(400).json({ error: 'Invalid template ID' });
+                }
+                
+                const template = PROJECT_TEMPLATES[templateId];
+                const projectDir = projectName || `${templateId}-project`;
+                
+                // Function to create files recursively
+                const createFiles = async (structure, basePath = '') => {
+                    const results = [];
+                    
+                    for (const [name, content] of Object.entries(structure)) {
+                        const fullPath = path.join(basePath, name);
+                        
+                        if (typeof content === 'string') {
+                            // It's a file
+                            const analysis = validateFileOperation(fullPath, 'create');
+                            const dir = path.dirname(fullPath);
+                            if (!fs.existsSync(dir)) {
+                                fs.mkdirSync(dir, { recursive: true });
+                            }
+                            fs.writeFileSync(fullPath, content, 'utf8');
+                            results.push({ type: 'file', path: fullPath, size: content.length });
+                        } else if (typeof content === 'object') {
+                            // It's a directory
+                            if (!fs.existsSync(fullPath)) {
+                                fs.mkdirSync(fullPath, { recursive: true });
+                            }
+                            results.push({ type: 'directory', path: fullPath });
+                            
+                            // Recursively create subdirectories and files
+                            const subResults = await createFiles(content, fullPath);
+                            results.push(...subResults);
+                        }
+                    }
+                    
+                    return results;
+                };
+                
+                // Create project directory
+                if (!fs.existsSync(projectDir)) {
+                    fs.mkdirSync(projectDir, { recursive: true });
+                }
+                
+                // Create structure files
+                const structureResults = await createFiles(template.structure, projectDir);
+                
+                // Create config files
+                const configResults = await createFiles(template.configs, projectDir);
+                
+                const allResults = [...structureResults, ...configResults];
+                
+                console.log(`📦 Generated ${templateId} project: ${projectDir}`);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    templateId,
+                    projectName: projectDir,
+                    filesCreated: allResults.filter(r => r.type === 'file').length,
+                    directoriesCreated: allResults.filter(r => r.type === 'directory').length,
+                    files: allResults,
+                    timestamp: new Date().toISOString()
+                }));
+                
+            } catch (error) {
+                console.error('Template generation error:', error);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+        });
+    }
     else if(req.method === 'POST' && req.url === '/execute') {
         let body = '';
 
@@ -699,14 +1153,18 @@ const server = http.createServer((req, res) => {
 
                 if (payload.command) {
                     console.log(payload.command);
-                    // Enhanced code execution with async support
+                    // Enhanced code execution with pattern-based validation
                     console.log(payload)
-                    let allowedCommands = getAllowedCommands();
-                    if(!allowedCommands.includes(payload.command)) {
+                    try {
+                        validateCommand(payload.command);
+                        executeCodeWithAsyncSupport(payload, res);
+                    } catch (error) {
                         res.writeHead(400, { 'Content-Type': 'application/json' });
-                        return res.end(JSON.stringify({ error: 'Command not allowed. Only npm/yarn/pnpm commands for React/Next.js projects are permitted.' }));
+                        return res.end(JSON.stringify({ 
+                            error: error.message,
+                            type: 'CommandValidationError'
+                        }));
                     }
-                    executeCodeWithAsyncSupport(payload, res);
                 } else {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     return res.end(JSON.stringify({ error: 'Code is required' }));
