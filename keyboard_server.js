@@ -376,21 +376,21 @@ ensureBackupDirectory();
 const SAFE_COMMAND_PATTERNS = {
     // Package management
     npm: [
-        /^npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)\s+.*/,
+        /^npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)(\s+.*)?$/,
         /^npm\s+run\s+[\w:-]+(\s+.*)?$/,
         /^npm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
         /^npm\s+ci(\s+.*)?$/
     ],
     
     yarn: [
-        /^yarn\s+(add|remove|install|upgrade|outdated|audit)\s+.*/,
+        /^yarn\s+(add|remove|install|upgrade|outdated|audit)(\s+.*)?$/,
         /^yarn\s+[\w:-]+(\s+.*)?$/,
         /^yarn\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
         /^yarn(\s+install)?$/
     ],
     
     pnpm: [
-        /^pnpm\s+(add|remove|install|update|outdated|audit)\s+.*/,
+        /^pnpm\s+(add|remove|install|update|outdated|audit)(\s+.*)?$/,
         /^pnpm\s+[\w:-]+(\s+.*)?$/,
         /^pnpm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
         /^pnpm\s+i(\s+.*)?$/
@@ -417,9 +417,29 @@ const SAFE_COMMAND_PATTERNS = {
         /^cat\s+[\w./-]+$/,
         /^head\s+(-n\s+\d+\s+)?[\w./-]+$/,
         /^tail\s+(-n\s+\d+\s+)?[\w./-]+$/,
-        /^mkdir\s+-p\s+[\w./-]+$/
+        /^mkdir\s+-p\s+[\w./-]+$/,
+        /^cd\s+[\w./-]+$/,
+        /^pwd$/
     ],
     
+    // Command chaining patterns
+    chaining: [
+        /^cd\s+[\w./-]+\s+&&\s+npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+npm\s+run\s+[\w:-]+(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+npm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+npm\s+ci(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+yarn\s+(add|remove|install|upgrade|outdated|audit)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+yarn\s+[\w:-]+(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+yarn\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+yarn(\s+install)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+(add|remove|install|update|outdated|audit)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+[\w:-]+(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+i(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+ls(\s+-[la]+)?(\s+.*)?$/,
+        /^cd\s+[\w./-]+\s+&&\s+pwd$/
+    ],
+
     // Git operations (safe ones)
     git: [
         /^git\s+(status|log|diff|show)(\s+.*)?$/,
@@ -1193,9 +1213,19 @@ async function executeCodeWithAsyncSupport(payload, res) {
         // Store the original command before wrapping
         const originalCommand = codeToExecute;
         
-        // Wrap the approved command in childExec
-        const wrappedCommand = `await childExec('${originalCommand.replace(/'/g, "\\'")}')`;
-        console.log('🔄 Auto-wrapped command:', wrappedCommand);
+        // Wrap the approved command in childExec and capture output
+        const wrappedCommand = `const result = await childExec('${originalCommand.replace(/'/g, "\\'")}'); 
+console.log('📤 COMMAND OUTPUT:');
+if (result.stdout && result.stdout.trim()) {
+    console.log('📤 STDOUT:');
+    console.log(result.stdout);
+}
+if (result.stderr && result.stderr.trim()) {
+    console.log('📤 STDERR:');  
+    console.log(result.stderr);
+}
+console.log('📊 Exit code:', result.code);`;
+        console.log('🔄 Auto-wrapped command with output capture');
     
          // Define the childExec function that will be available in the executed code
          const childExecFunction = `
