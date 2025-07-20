@@ -4,7 +4,8 @@
   "description": "A simple Node.js server that responds with 'Hello World'.",
   "main": "src/server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "kill-port": "lsof -ti:3001 | xargs -r kill -9 2>/dev/null || true"
   },
   "dependencies": {
     "axios": "^1.9.0",
