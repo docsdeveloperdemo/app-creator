@@ -291,43 +291,55 @@ const createBackup = async (filePath) => {
     return createSmartBackup(filePath, 'legacy');
 };
 
-// Bulk operation utilities
+// Bulk operation utilities - ENHANCED WITH PARALLEL PROCESSING
 const processBulkOperation = async (files, operation) => {
     if (!Array.isArray(files)) {
         // Single file operation
         return await operation(files);
     }
     
-    // Bulk operation
-    const results = [];
-    const errors = [];
+    // ✨ PARALLEL BULK OPERATION USING Promise.all ✨
+    console.log(`🚀 Starting parallel processing of ${files.length} files...`);
+    const startTime = Date.now();
     
-    for (let i = 0; i < files.length; i++) {
+    // Create promises for all file operations to run in parallel
+    const promises = files.map(async (file, index) => {
         try {
-            const result = await operation(files[i]);
-            results.push({
-                index: i,
-                file: files[i],
+            const result = await operation(file);
+            return {
+                index,
+                file,
                 success: true,
-                result: result
-            });
+                result
+            };
         } catch (error) {
-            errors.push({
-                index: i,
-                file: files[i],
+            return {
+                index,
+                file,
                 success: false,
                 error: error.message,
                 type: error.constructor.name
-            });
+            };
         }
-    }
+    });
+    
+    // Execute all operations in parallel
+    const results = await Promise.all(promises);
+    const elapsed = Date.now() - startTime;
+    
+    // Separate successful and failed operations
+    const successes = results.filter(r => r.success);
+    const errors = results.filter(r => !r.success);
+    
+    console.log(`⚡ Parallel processing completed in ${elapsed}ms: ${successes.length} success, ${errors.length} errors`);
     
     return {
         success: errors.length === 0,
         totalFiles: files.length,
-        successCount: results.length,
+        successCount: successes.length,
         errorCount: errors.length,
-        results: results,
+        executionTime: elapsed,
+        results: successes,
         errors: errors
     };
 };
@@ -411,33 +423,50 @@ const SAFE_COMMAND_PATTERNS = {
         /^npx\s+(next|vite|react-scripts|storybook)\s+[\w-]+(\s+.*)?$/
     ],
     
-    // Safe file operations
+    // Safe file operations - ENHANCED WITH MORE CAT OPERATIONS
     fileOps: [
         /^ls(\s+-[la]+)?(\s+.*)?$/,
-        /^cat\s+[\w./-]+$/,
-        /^head\s+(-n\s+\d+\s+)?[\w./-]+$/,
-        /^tail\s+(-n\s+\d+\s+)?[\w./-]+$/,
-        /^mkdir\s+-p\s+[\w./-]+$/,
-        /^cd\s+[\w./-]+$/,
-        /^pwd$/
+        /^cat\s+[\w.\/-]+(\.(js|ts|tsx|jsx|json|md|txt|css|scss|sass|less|html|xml|yml|yaml|toml|env))?$/,
+        /^cat\s+[\w.\/-]+\s*\|\s*head(\s+-n\s+\d+)?.*$/,
+        /^cat\s+[\w.\/-]+\s*\|\s*tail(\s+-n\s+\d+)?.*$/,
+        /^cat\s+[\w.\/-]+\s*\|\s*grep\s+[\w.\-]+.*$/,
+        /^head\s+(-n\s+\d+\s+)?[\w.\/-]+$/,
+        /^tail\s+(-n\s+\d+\s+)?[\w.\/-]+$/,
+        /^tail\s+-f\s+[\w.\/-]+$/,
+        /^grep\s+(-[ilnr]+\s+)?[\w.\-]+\s+[\w.\/-]+$/,
+        /^find\s+[\w.\/-]+\s+-name\s+[\w.*\-"']+$/,
+        /^find\s+[\w.\/-]+\s+-name\s+[\w.*\-"']+\s*\|\s*head(\s+-n?\s*\d+)?.*$/,
+        /^find\s+[\w.\/-]+\s+-name\s+[\w.*\-"']+\s*\|\s*tail(\s+-n?\s*\d+)?.*$/,
+        /^find\s+[\w.\/-]+\s+-name\s+[\w.*\-"']+\s*\|\s*grep\s+[\w.\-]+.*$/,
+        /^wc\s+(-[lwc]+\s+)?[\w.\/-]+$/,
+        /^file\s+[\w.\/-]+$/,
+        /^stat\s+[\w.\/-]+$/,
+        /^mkdir\s+-p\s+[\w.\/-]+$/,
+        /^cd\s+[\w.\/-]+$/,
+        /^pwd$/,
+        /^echo\s+[\w\s"'.\-]+$/,
+        /^which\s+[\w\-]+$/,
+        /^tree(\s+-[aL]+)?(\s+[\w.\/-]+)?$/
     ],
     
     // Command chaining patterns
     chaining: [
-        /^cd\s+[\w./-]+\s+&&\s+npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+npm\s+run\s+[\w:-]+(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+npm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+npm\s+ci(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+yarn\s+(add|remove|install|upgrade|outdated|audit)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+yarn\s+[\w:-]+(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+yarn\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+yarn(\s+install)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+(add|remove|install|update|outdated|audit)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+[\w:-]+(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+pnpm\s+i(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+ls(\s+-[la]+)?(\s+.*)?$/,
-        /^cd\s+[\w./-]+\s+&&\s+pwd$/
+        /^cd\s+[\w.\/-]+\s+&&\s+npm\s+(install|i|add|remove|uninstall|update|outdated|audit|fund)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+npm\s+run\s+[\w:\-]+(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+npm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+npm\s+ci(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+yarn\s+(add|remove|install|upgrade|outdated|audit)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+yarn\s+[\w:\-]+(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+yarn\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+yarn(\s+install)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+pnpm\s+(add|remove|install|upgrade|outdated|audit)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+pnpm\s+[\w:\-]+(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+pnpm\s+(start|build|test|dev|lint|preview|serve)(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+pnpm\s+i(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+ls(\s+-[la]+)?(\s+.*)?$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+pwd$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+cat\s+[\w.\/-]+$/,
+        /^cd\s+[\w.\/-]+\s+&&\s+tree(\s+-[aL]+)?(\s+[\w.\/-]+)?$/
     ],
 
     // Git operations (safe ones)
@@ -1095,33 +1124,65 @@ const server = http.createServer((req, res) => {
                 const template = PROJECT_TEMPLATES[templateId];
                 const projectDir = projectName || `${templateId}-project`;
                 
-                // Function to create files recursively
+                // Function to create files recursively - ENHANCED WITH PARALLEL PROCESSING
                 const createFiles = async (structure, basePath = '') => {
                     const results = [];
+                    const fileOperations = [];
+                    const dirOperations = [];
                     
+                    console.log(`📁 Preparing operations for path: ${basePath || 'root'}`);
+                    
+                    // First pass: collect all operations
                     for (const [name, content] of Object.entries(structure)) {
                         const fullPath = path.join(basePath, name);
                         
                         if (typeof content === 'string') {
-                            // It's a file
-                            const analysis = validateFileOperation(fullPath, 'create');
-                            const dir = path.dirname(fullPath);
+                            // It's a file - prepare file operation
+                            fileOperations.push({
+                                name,
+                                fullPath,
+                                content,
+                                type: 'file'
+                            });
+                        } else if (typeof content === 'object') {
+                            // It's a directory - prepare directory operation
+                            dirOperations.push({
+                                name,
+                                fullPath,
+                                content,
+                                type: 'directory'
+                            });
+                        }
+                    }
+                    
+                    // Create all directories first (must be sequential for dependencies)
+                    for (const dirOp of dirOperations) {
+                        if (!fs.existsSync(dirOp.fullPath)) {
+                            fs.mkdirSync(dirOp.fullPath, { recursive: true });
+                        }
+                        results.push({ type: 'directory', path: dirOp.fullPath });
+                        
+                        // Recursively process subdirectories
+                        const subResults = await createFiles(dirOp.content, dirOp.fullPath);
+                        results.push(...subResults);
+                    }
+                    
+                    // Execute all file operations in parallel
+                    if (fileOperations.length > 0) {
+                        console.log(`⚡ Creating ${fileOperations.length} files in parallel...`);
+                        const filePromises = fileOperations.map(async (fileOp) => {
+                            const analysis = validateFileOperation(fileOp.fullPath, 'create');
+                            const dir = path.dirname(fileOp.fullPath);
                             if (!fs.existsSync(dir)) {
                                 fs.mkdirSync(dir, { recursive: true });
                             }
-                            fs.writeFileSync(fullPath, content, 'utf8');
-                            results.push({ type: 'file', path: fullPath, size: content.length });
-                        } else if (typeof content === 'object') {
-                            // It's a directory
-                            if (!fs.existsSync(fullPath)) {
-                                fs.mkdirSync(fullPath, { recursive: true });
-                            }
-                            results.push({ type: 'directory', path: fullPath });
-                            
-                            // Recursively create subdirectories and files
-                            const subResults = await createFiles(content, fullPath);
-                            results.push(...subResults);
-                        }
+                            // Note: fs.writeFileSync is synchronous, but we're still parallelizing the validation
+                            fs.writeFileSync(fileOp.fullPath, fileOp.content, 'utf8');
+                            return { type: 'file', path: fileOp.fullPath, size: fileOp.content.length };
+                        });
+                        
+                        const fileResults = await Promise.all(filePromises);
+                        results.push(...fileResults);
                     }
                     
                     return results;
@@ -1235,8 +1296,18 @@ function childExec(command) {
     return new Promise((resolve, reject) => {
         console.log('🚀 Executing command:', command);
         
-        const [cmd, ...args] = command.split(' ');
-        const child = spawn(cmd, args, { stdio: 'pipe' });
+        // Check if command contains shell operators (pipes, redirects, etc.)
+        const hasShellOperators = /[|&;<>(){}]/.test(command);
+        
+        let child;
+        if (hasShellOperators) {
+            // Use shell for complex commands with pipes, etc.
+            child = spawn('sh', ['-c', command], { stdio: 'pipe' });
+        } else {
+            // Use direct spawn for simple commands
+            const [cmd, ...args] = command.split(' ');
+            child = spawn(cmd, args, { stdio: 'pipe' });
+        }
         
         let stdout = '';
         let stderr = '';
