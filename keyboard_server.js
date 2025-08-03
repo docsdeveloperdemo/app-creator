@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { retrievePackageJson, retrieveEnvironmentVariableKeys, retrieveDocResources } = require('./keyboard_utils/retrieve_resources/keybooard_resources');
 const { PROJECT_TEMPLATES } = require('./project-templates');
+const { browserOperations, handleBrowserOperation } = require('./keyboard_utils/browser_automation');
 
 // Enhanced File protection and backup utilities with intelligent pattern matching
 
@@ -1255,7 +1256,36 @@ const server = http.createServer((req, res) => {
                 res.end(JSON.stringify({ error: 'Looks there was an error did you review or look at docs before executing this request?' }));
             }
         });
-    } else {
+    }
+    // Browser automation endpoints
+    else if (req.method === 'POST' && req.url === '/browser/screenshot') {
+        handleBrowserOperation(req, res, browserOperations.screenshot);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/navigate') {
+        handleBrowserOperation(req, res, browserOperations.navigate);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/console') {
+        handleBrowserOperation(req, res, browserOperations.getConsoleLogs);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/evaluate') {
+        handleBrowserOperation(req, res, browserOperations.evaluate);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/click') {
+        handleBrowserOperation(req, res, browserOperations.click);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/type') {
+        handleBrowserOperation(req, res, browserOperations.type);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/wait') {
+        handleBrowserOperation(req, res, browserOperations.waitFor);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/content') {
+        handleBrowserOperation(req, res, browserOperations.getPageContent);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/close') {
+        handleBrowserOperation(req, res, browserOperations.closeBrowser);
+    }
+    else {
         res.writeHead(404);
         res.end('Not found');
     }
