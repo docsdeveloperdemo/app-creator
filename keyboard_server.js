@@ -1125,6 +1125,15 @@ const server = http.createServer((req, res) => {
                 const template = PROJECT_TEMPLATES[templateId];
                 const projectDir = projectName || `${templateId}-project`;
                 
+                // Check if project directory already exists
+                if (fs.existsSync(projectDir)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: `Project directory '${projectDir}' already exists. Please choose a different name.` 
+                    }));
+                    return;
+                }
+                
                 // Function to create files recursively - ENHANCED WITH PARALLEL PROCESSING
                 const createFiles = async (structure, basePath = '') => {
                     const results = [];

@@ -308,6 +308,25 @@ const browserOperations = {
     }
 };
 
+// Helper function to convert codespace URLs to localhost URLs
+function convertCodespaceUrlToLocalhost(url) {
+    if (!url) return url;
+    
+    // Pattern to match codespace URLs
+    const codespacePattern = /https:\/\/[^-]+-(\d+)\.app\.github\.dev/;
+    const match = url.match(codespacePattern);
+    
+    if (match) {
+        const port = match[1];
+        // Replace the codespace URL with localhost URL
+        const localhostUrl = url.replace(match[0], `http://localhost:${port}`);
+        console.log(`🔄 Converted URL: ${url} → ${localhostUrl}`);
+        return localhostUrl;
+    }
+    
+    return url;
+}
+
 // Browser operation request handler
 async function handleBrowserOperation(req, res, operation) {
     let body = '';
@@ -319,7 +338,16 @@ async function handleBrowserOperation(req, res, operation) {
     req.on('end', async () => {
         try {
             const payload = body ? JSON.parse(body) : {};
+            console.log("this is the payload", payload)
+            
+            // Convert codespace URLs to localhost URLs if present
+            if (payload.url) {
+                payload.url = convertCodespaceUrlToLocalhost(payload.url);
+            }
+            
             const result = await operation(payload);
+
+            console.log(result)
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(result));
