@@ -1,5 +1,5 @@
 {
-    "postCreateCommand": "npm install -g @anthropic/claude-code && npm install && npx playwright install chromium --with-deps",
+    "postCreateCommand": "npm install && npx playwright install chromium --with-deps",
     "postStartCommand": "node keyboard_server.js",
     "forwardPorts": [3000, 3001, 4000, 5173, 8000, 8080, 11434]
 }
