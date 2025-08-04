@@ -308,12 +308,11 @@ const browserOperations = {
     }
 };
 
-// Helper function to convert codespace URLs to localhost URLs
 function convertCodespaceUrlToLocalhost(url) {
     if (!url) return url;
     
-    // Pattern to match codespace URLs
-    const codespacePattern = /https:\/\/[^-]+-(\d+)\.app\.github\.dev/;
+    // Pattern to match codespace URLs - captures the port number at the end
+    const codespacePattern = /https:\/\/.*-(\d+)\.app\.github\.dev/;
     const match = url.match(codespacePattern);
     
     if (match) {
