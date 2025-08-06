@@ -1,0 +1,12 @@
+{
+  "originalPath": "/workspaces/app-creator/express-templates/aframe-vr-experience/package.json",
+  "context": "update",
+  "timestamp": "2025-08-06T21-41-49-029Z",
+  "size": 868,
+  "protection": {
+    "allowed": true,
+    "level": "PROJECT_FILE",
+    "reason": "Allowed project development file"
+  },
+  "hash": "32d11b9ccd89fb7519d1ee9e788059b0"
+}
