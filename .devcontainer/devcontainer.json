@@ -1,5 +1,5 @@
 {
-    "postCreateCommand": "npm install && npm start",
+    "postCreateCommand": "npm install && npm install --save-dev concurrently",
     "forwardPorts": [
         3000,
         3001,
