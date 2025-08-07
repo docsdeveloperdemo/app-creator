@@ -61,6 +61,9 @@ async function initBrowser() {
 // Browser operation handlers
 const browserOperations = {
     async screenshot(payload) {
+        try {
+
+        
         const { url, fullPage = true, outputPath, selector } = payload;
         
         if (!url) {
@@ -113,6 +116,9 @@ const browserOperations = {
             pageTitle: await page.title(),
             timestamp: new Date().toISOString()
         };
+    } catch(e) {
+        console.log(e)
+    }
     },
     
     async navigate(payload) {

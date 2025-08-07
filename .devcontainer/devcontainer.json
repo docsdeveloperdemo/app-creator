@@ -1,5 +1,13 @@
 {
-    "postCreateCommand": "npm install && npm run start",
-    "postStartCommand": "npx playwright install chromium --with-deps",
-    "forwardPorts": [3000, 3001, 4000, 5173, 8000, 8080, 11434]
+    "postCreateCommand": "npm install",
+    "postStartCommand": "npm run setup-playwright && npm start",
+    "forwardPorts": [
+        3000,
+        3001,
+        4000,
+        5173,
+        8000,
+        8080,
+        11434
+    ]
 }

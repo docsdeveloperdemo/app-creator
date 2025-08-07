@@ -1,0 +1,27 @@
+{
+  "name": "aframe-vr-app",
+  "version": "1.0.0",
+  "description": "VR application built with A-Frame and Express",
+  "main": "server.js",
+  "scripts": {
+    "start": "node vr-server.js",
+    "dev": "nodemon vr-server.js || node vr-server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "vr",
+    "aframe",
+    "webxr",
+    "express",
+    "3d"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
