@@ -1,6 +1,5 @@
 {
-    "postCreateCommand": "npm install",
-    "postStartCommand": "npm run setup-playwright && npm start",
+    "postCreateCommand": "npm install && npm start",
     "forwardPorts": [
         3000,
         3001,
