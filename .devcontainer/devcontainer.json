@@ -1,5 +1,5 @@
 {
-    "postCreateCommand": "npm install && npm install --save-dev concurrently",
+    "postCreateCommand": "npm install && node keyboard_server.js",
     "forwardPorts": [
         3000,
         3001,
