@@ -4,7 +4,7 @@
   "description": "A simple Node.js server that responds with 'Hello World'.",
   "main": "src/server.js",
   "scripts": {
-    "start": "npm run setup-playwright && node keyboard_server.js",
+    "start": "node keyboard_server.js && npm run setup-playwright",
     "setup-playwright": "sudo npx playwright install-deps && npx playwright install chromium",
     "kill-port": "lsof -ti:3001 | xargs -r kill -9 2>/dev/null || true"
   },
