@@ -1822,13 +1822,60 @@ function executeProcessWithTimeout(cmd, args, res, cleanup = null, options = {})
     });
 }
 
+function installPlaywright() {
+  console.log('Starting Playwright dependencies installation...');
+  
+  // First install dependencies
+  const installDeps = spawn('npx', ['playwright', 'install-deps'], {
+    stdio: 'pipe'
+  });
+
+  installDeps.stdout.on('data', (data) => {
+    console.log(`Playwright deps: ${data}`);
+  });
+
+  installDeps.stderr.on('data', (data) => {
+    console.error(`Playwright deps error: ${data}`);
+  });
+
+  installDeps.on('close', (code) => {
+    console.log(`Playwright dependencies installation completed with code ${code}`);
+    
+    if (code === 0) {
+      // Then install chromium
+      console.log('Starting Chromium installation...');
+      const installChromium = spawn('npx', ['playwright', 'install', 'chromium'], {
+        stdio: 'pipe'
+      });
+
+      installChromium.stdout.on('data', (data) => {
+        console.log(`Playwright chromium: ${data}`);
+      });
+
+      installChromium.stderr.on('data', (data) => {
+        console.error(`Playwright chromium error: ${data}`);
+      });
+
+      installChromium.on('close', (chromiumCode) => {
+        console.log(`Chromium installation completed with code ${chromiumCode}`);
+      });
+    } else {
+      console.error('Dependencies installation failed, skipping Chromium installation');
+    }
+  });
+
+  installDeps.on('error', (error) => {
+    console.error(`Playwright installation error: ${error}`);
+  });
+}
+
 
 
 const PORT = 3001;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📍 Server available at: http://localhost:${PORT}`);
-    
+    installPlaywright();
     // 🎯 KEY: Start Ollama setup ONLY after server is confirmed running
  
 });
