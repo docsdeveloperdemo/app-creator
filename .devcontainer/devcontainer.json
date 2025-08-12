@@ -1,6 +1,8 @@
 {
-    "postCreateCommand": "curl -fsSL https://bun.com/install | bash",
-    "postStartCommand": "bun install && bun keyboard_server.js",
+    "postCreateCommand": "bun install && bun keyboard_server.js",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
     "forwardPorts": [
         3000,
         3001,
