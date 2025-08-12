@@ -1,12 +1,7 @@
 {
-  "name": "Bun Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
-  "features": {
-    "ghcr.io/devcontainers/features/bun:1": {
-      "version": "latest"
-    }
-  },
-  "postCreateCommand": "bun install",
-  "postStartCommand": "nohup bun keyboard_server.js > /tmp/keyboard.log 2>&1 &",
+  "name": "Keyboard dev container",
+  "image": "oven/bun:debian",
+  "remoteUser": "root",
+  "postCreateCommand": "bun install && bun keyboard_server.js",
   "forwardPorts": [3000,3001,4000,5173,8000,8080,11434]
 }
