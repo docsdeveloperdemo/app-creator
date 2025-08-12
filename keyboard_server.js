@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { retrievePackageJson, retrieveEnvironmentVariableKeys, retrieveDocResources } = require('./keyboard_utils/retrieve_resources/keybooard_resources');
 const { PROJECT_TEMPLATES } = require('./project-templates');
+const { browserOperations, handleBrowserOperation } = require('./keyboard_utils/browser_automation');
 
 // Enhanced File protection and backup utilities with intelligent pattern matching
 
@@ -1124,6 +1125,15 @@ const server = http.createServer((req, res) => {
                 const template = PROJECT_TEMPLATES[templateId];
                 const projectDir = projectName || `${templateId}-project`;
                 
+                // Check if project directory already exists
+                if (fs.existsSync(projectDir)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: `Project directory '${projectDir}' already exists. Please choose a different name.` 
+                    }));
+                    return;
+                }
+                
                 // Function to create files recursively - ENHANCED WITH PARALLEL PROCESSING
                 const createFiles = async (structure, basePath = '') => {
                     const results = [];
@@ -1255,7 +1265,36 @@ const server = http.createServer((req, res) => {
                 res.end(JSON.stringify({ error: 'Looks there was an error did you review or look at docs before executing this request?' }));
             }
         });
-    } else {
+    }
+    // Browser automation endpoints
+    else if (req.method === 'POST' && req.url === '/browser/screenshot') {
+        handleBrowserOperation(req, res, browserOperations.screenshot);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/navigate') {
+        handleBrowserOperation(req, res, browserOperations.navigate);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/console') {
+        handleBrowserOperation(req, res, browserOperations.getConsoleLogs);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/evaluate') {
+        handleBrowserOperation(req, res, browserOperations.evaluate);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/click') {
+        handleBrowserOperation(req, res, browserOperations.click);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/type') {
+        handleBrowserOperation(req, res, browserOperations.type);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/wait') {
+        handleBrowserOperation(req, res, browserOperations.waitFor);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/content') {
+        handleBrowserOperation(req, res, browserOperations.getPageContent);
+    }
+    else if (req.method === 'POST' && req.url === '/browser/close') {
+        handleBrowserOperation(req, res, browserOperations.closeBrowser);
+    }
+    else {
         res.writeHead(404);
         res.end('Not found');
     }
@@ -1783,13 +1822,60 @@ function executeProcessWithTimeout(cmd, args, res, cleanup = null, options = {})
     });
 }
 
+function installPlaywright() {
+  console.log('Starting Playwright dependencies installation...');
+  
+  // First install dependencies
+  const installDeps = spawn('npx', ['playwright', 'install-deps'], {
+    stdio: 'pipe'
+  });
+
+  installDeps.stdout.on('data', (data) => {
+    console.log(`Playwright deps: ${data}`);
+  });
+
+  installDeps.stderr.on('data', (data) => {
+    console.error(`Playwright deps error: ${data}`);
+  });
+
+  installDeps.on('close', (code) => {
+    console.log(`Playwright dependencies installation completed with code ${code}`);
+    
+    if (code === 0) {
+      // Then install chromium
+      console.log('Starting Chromium installation...');
+      const installChromium = spawn('npx', ['playwright', 'install', 'chromium'], {
+        stdio: 'pipe'
+      });
+
+      installChromium.stdout.on('data', (data) => {
+        console.log(`Playwright chromium: ${data}`);
+      });
+
+      installChromium.stderr.on('data', (data) => {
+        console.error(`Playwright chromium error: ${data}`);
+      });
+
+      installChromium.on('close', (chromiumCode) => {
+        console.log(`Chromium installation completed with code ${chromiumCode}`);
+      });
+    } else {
+      console.error('Dependencies installation failed, skipping Chromium installation');
+    }
+  });
+
+  installDeps.on('error', (error) => {
+    console.error(`Playwright installation error: ${error}`);
+  });
+}
+
 
 
 const PORT = 3001;
 server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📍 Server available at: http://localhost:${PORT}`);
-    
+    installPlaywright();
     // 🎯 KEY: Start Ollama setup ONLY after server is confirmed running
  
 });
