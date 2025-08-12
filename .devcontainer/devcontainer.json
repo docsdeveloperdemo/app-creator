@@ -1,7 +1,4 @@
 {
-  "name": "Keyboard dev container",
-  "image": "oven/bun:debian",
-  "remoteUser": "root",
-  "postCreateCommand": "bun install && bun keyboard_server.js",
-  "forwardPorts": [3000,3001,4000,5173,8000,8080,11434]
+    "postStartCommand": "npm install && node keyboard_server.js",
+    "forwardPorts": [3000, 3001, 4000, 5173, 8000, 8080, 11434]
 }
