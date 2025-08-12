@@ -1,5 +1,6 @@
 {
-    "postCreateCommand": "npm install && node keyboard_server.js",
+    "postCreateCommand": "curl -fsSL https://bun.com/install | bash",
+    "postStartCommand": "bun install && bun keyboard_server.js",
     "forwardPorts": [
         3000,
         3001,
