@@ -1218,7 +1218,7 @@ It helps track branch information and development context.
                 console.log(`📄 Created metadata file: ${metadataFileName}`);
                 
                 // Step 4: Git add the metadata file
-                const addCmd = `git add ${metadataFileName}`;
+                const addCmd = `git add .`;
                 await new Promise((resolve, reject) => {
                     const addProc = spawn('sh', ['-c', addCmd]);
                     addProc.on('close', (code) => {
