@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: test-feature
+Created/Updated: 2025-08-13T19:42:37.844Z
+Author: Developer
+Purpose: Testing git branch operations
+Description: Testing the new branch workflow endpoint
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.
