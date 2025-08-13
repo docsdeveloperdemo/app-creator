@@ -1091,6 +1091,268 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ error: error.message }));
         }
     }
+    // Git branch management endpoint
+    else if (req.method === 'POST' && req.url === '/git/branch-workflow') {
+        let body = '';
+        
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        
+        req.on('end', async () => {
+            try {
+                const payload = JSON.parse(body);
+                const { 
+                    branchName, 
+                    description = 'No description provided',
+                    author = 'Unknown',
+                    purpose = 'General development'
+                } = payload;
+                
+                if (!branchName) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'branchName is required' }));
+                    return;
+                }
+                
+                // Validate branch name (alphanumeric, hyphens, underscores, forward slashes)
+                if (!/^[a-zA-Z0-9\-_\/]+$/.test(branchName)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Invalid branch name. Use only alphanumeric characters, hyphens, underscores, and forward slashes.' 
+                    }));
+                    return;
+                }
+                
+                console.log(`🌿 Starting git branch workflow for: ${branchName}`);
+                
+                // Step 1: Check if branch exists
+                const checkBranchCmd = `git show-ref --verify --quiet refs/heads/${branchName}`;
+                let branchExists = false;
+                
+                try {
+                    const checkResult = await new Promise((resolve) => {
+                        const checkProc = spawn('sh', ['-c', checkBranchCmd]);
+                        checkProc.on('close', (code) => {
+                            resolve(code === 0);
+                        });
+                    });
+                    branchExists = checkResult;
+                } catch (error) {
+                    console.log('Error checking branch:', error.message);
+                }
+                
+                // Step 2: Create branch if it doesn't exist
+                let createdNewBranch = false;
+                if (!branchExists) {
+                    console.log(`📝 Creating new branch: ${branchName}`);
+                    const createBranchCmd = `git checkout -b ${branchName}`;
+                    
+                    const createResult = await new Promise((resolve, reject) => {
+                        const createProc = spawn('sh', ['-c', createBranchCmd]);
+                        let stdout = '';
+                        let stderr = '';
+                        
+                        createProc.stdout.on('data', (data) => {
+                            stdout += data.toString();
+                        });
+                        
+                        createProc.stderr.on('data', (data) => {
+                            stderr += data.toString();
+                        });
+                        
+                        createProc.on('close', (code) => {
+                            if (code === 0) {
+                                resolve({ success: true, stdout, stderr });
+                            } else {
+                                reject(new Error(`Failed to create branch: ${stderr || stdout}`));
+                            }
+                        });
+                    });
+                    
+                    createdNewBranch = true;
+                    console.log('✅ Branch created successfully');
+                } else {
+                    // Checkout existing branch
+                    console.log(`🔄 Checking out existing branch: ${branchName}`);
+                    const checkoutCmd = `git checkout ${branchName}`;
+                    
+                    await new Promise((resolve, reject) => {
+                        const checkoutProc = spawn('sh', ['-c', checkoutCmd]);
+                        let stderr = '';
+                        
+                        checkoutProc.stderr.on('data', (data) => {
+                            stderr += data.toString();
+                        });
+                        
+                        checkoutProc.on('close', (code) => {
+                            if (code === 0) {
+                                resolve({ success: true });
+                            } else {
+                                reject(new Error(`Failed to checkout branch: ${stderr}`));
+                            }
+                        });
+                    });
+                    
+                    console.log('✅ Branch checked out successfully');
+                }
+                
+                // Step 3: Create metadata file
+                const metadataFileName = `.branch-metadata-${branchName.replace(/\//g, '-')}.txt`;
+                const metadataContent = `Branch Metadata
+===============
+Branch Name: ${branchName}
+Created/Updated: ${new Date().toISOString()}
+Author: ${author}
+Purpose: ${purpose}
+Description: ${description}
+
+Status: ${createdNewBranch ? 'New branch created' : 'Existing branch updated'}
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.
+`;
+                
+                fs.writeFileSync(metadataFileName, metadataContent, 'utf8');
+                console.log(`📄 Created metadata file: ${metadataFileName}`);
+                
+                // Step 4: Git add the metadata file
+                const addCmd = `git add ${metadataFileName}`;
+                await new Promise((resolve, reject) => {
+                    const addProc = spawn('sh', ['-c', addCmd]);
+                    addProc.on('close', (code) => {
+                        if (code === 0) {
+                            resolve();
+                        } else {
+                            reject(new Error('Failed to add metadata file'));
+                        }
+                    });
+                });
+                
+                // Step 5: Commit the changes
+                const commitMessage = createdNewBranch 
+                    ? `Initial branch setup: ${branchName}\n\nAdded branch metadata file\nPurpose: ${purpose}\nDescription: ${description}`
+                    : `Updated branch metadata: ${branchName}\n\nUpdated metadata file\nPurpose: ${purpose}\nDescription: ${description}`;
+                
+                const commitCmd = `git commit -m "${commitMessage}"`;
+                
+                let commitResult = await new Promise((resolve) => {
+                    const commitProc = spawn('sh', ['-c', commitCmd]);
+                    let stdout = '';
+                    let stderr = '';
+                    
+                    commitProc.stdout.on('data', (data) => {
+                        stdout += data.toString();
+                    });
+                    
+                    commitProc.stderr.on('data', (data) => {
+                        stderr += data.toString();
+                    });
+                    
+                    commitProc.on('close', (code) => {
+                        resolve({ 
+                            success: code === 0, 
+                            stdout, 
+                            stderr,
+                            code
+                        });
+                    });
+                });
+                
+                console.log('✅ Changes committed');
+                
+                // Step 6: Push to remote (optional, only if remote exists)
+                let pushResult = null;
+                try {
+                    // Check if remote exists
+                    const checkRemoteCmd = 'git remote -v';
+                    const hasRemote = await new Promise((resolve) => {
+                        const remoteProc = spawn('sh', ['-c', checkRemoteCmd]);
+                        let stdout = '';
+                        
+                        remoteProc.stdout.on('data', (data) => {
+                            stdout += data.toString();
+                        });
+                        
+                        remoteProc.on('close', () => {
+                            resolve(stdout.includes('origin'));
+                        });
+                    });
+                    
+                    if (hasRemote) {
+                        console.log('📤 Pushing to remote...');
+                        const pushCmd = `git push -u origin ${branchName}`;
+                        
+                        pushResult = await new Promise((resolve) => {
+                            const pushProc = spawn('sh', ['-c', pushCmd]);
+                            let stdout = '';
+                            let stderr = '';
+                            
+                            pushProc.stdout.on('data', (data) => {
+                                stdout += data.toString();
+                            });
+                            
+                            pushProc.stderr.on('data', (data) => {
+                                stderr += data.toString();
+                            });
+                            
+                            pushProc.on('close', (code) => {
+                                resolve({ 
+                                    success: code === 0,
+                                    stdout,
+                                    stderr,
+                                    pushed: code === 0
+                                });
+                            });
+                        });
+                        
+                        if (pushResult.success) {
+                            console.log('✅ Pushed to remote successfully');
+                        } else {
+                            console.log('⚠️ Push to remote failed (may need authentication)');
+                        }
+                    } else {
+                        console.log('ℹ️ No remote configured, skipping push');
+                    }
+                } catch (error) {
+                    console.log('⚠️ Could not push to remote:', error.message);
+                }
+                
+                // Prepare response
+                const response = {
+                    success: true,
+                    branchName,
+                    branchStatus: createdNewBranch ? 'created' : 'checked_out',
+                    metadataFile: metadataFileName,
+                    metadataContent,
+                    commitResult: {
+                        success: commitResult.success,
+                        message: commitMessage
+                    },
+                    pushResult: pushResult ? {
+                        success: pushResult.success,
+                        pushed: pushResult.pushed
+                    } : { 
+                        success: false, 
+                        message: 'No remote configured or push skipped' 
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(response));
+                
+            } catch (error) {
+                console.error('❌ Git workflow error:', error);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: error.message,
+                    type: 'GitWorkflowError'
+                }));
+            }
+        });
+    }
     // Template management endpoints
     else if (req.method === 'GET' && req.url === '/templates') {
         try {
