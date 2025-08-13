@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: feature/sprite-sheet-generator
+Created/Updated: 2025-08-13T21:31:21.480Z
+Author: User
+Purpose: Feature development - Sprite sheet generator for walking character animations
+Description: A React-based sprite sheet generator that creates an 8-frame walking character animation with customizable colors, speed controls, and PNG export functionality
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.

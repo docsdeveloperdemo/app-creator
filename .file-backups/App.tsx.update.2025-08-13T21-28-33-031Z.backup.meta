@@ -1,0 +1,12 @@
+{
+  "originalPath": "/workspaces/app-creator/react-templates/sprite-sheet-generator/src/App.tsx",
+  "context": "update",
+  "timestamp": "2025-08-13T21-28-33-031Z",
+  "size": 987,
+  "protection": {
+    "allowed": true,
+    "level": "SYSTEM_FILE",
+    "reason": "System file - requires careful handling"
+  },
+  "hash": "7d0ab8aa788e55519ed9c8d333b2841d"
+}
