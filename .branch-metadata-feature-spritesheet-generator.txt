@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: feature/spritesheet-generator
+Created/Updated: 2025-08-14T17:30:47.546Z
+Author: Developer
+Purpose: Feature development - Spritesheet Generator App
+Description: Complete spritesheet generator application with animated character creation, animation preview, and export functionality. Includes 16-frame walking animations (4 directions), real-time preview, PNG/JSON export, and customizable settings.
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.
