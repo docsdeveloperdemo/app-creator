@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: feature/fighting-sprite-generator
+Created/Updated: 2025-08-14T17:59:53.188Z
+Author: Claude AI Assistant
+Purpose: Feature development
+Description: Complete fighting game-style spritesheet generator with customizable characters, multiple animation types (walk, run, idle, jump), three render styles (classic, modern, pixel), real-time animation preview, and professional export functionality (PNG/JSON). Features retro arcade aesthetic with original character designs.
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.
