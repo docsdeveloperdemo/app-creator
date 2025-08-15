@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: app/fighting-sprite-generator
+Created/Updated: 2025-08-15T05:17:18.137Z
+Author: User
+Purpose: Application Save
+Description: Classic late 1990s RPG-style character sprite generator with 32x32 pixel art, multiple customization options, real-time animation, and full spritesheet export capabilities. Features authentic retro gaming aesthetics with detailed character rendering including hair styles, outfit variations, and classic shading techniques.
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.

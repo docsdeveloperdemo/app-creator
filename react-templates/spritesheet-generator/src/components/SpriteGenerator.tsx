@@ -1,306 +1,227 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { CharacterConfig } from '../App';
+import { CharacterConfig } from '../types';
 
 interface SpriteGeneratorProps {
-  config: CharacterConfig;
-  setSpritesheet: (canvas: HTMLCanvasElement | null) => void;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  character: CharacterConfig;
+  animationFrame: number;
 }
 
-export const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ config, setSpritesheet, canvasRef }) => {
-  const animationRef = useRef<HTMLCanvasElement>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const animationFrameRef = useRef<number>();
-  const frameRef = useRef<number>(0);
+const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ character, animationFrame }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [spriteData, setSpriteData] = useState<string>('');
 
   useEffect(() => {
-    generateSpritesheet();
-  }, [config]);
-
-  const generateSpritesheet = () => {
-    if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const frameCount = getFrameCount(config.animationType);
-    const frameSize = config.size;
+    // Set canvas size for classic sprite dimensions
+    canvas.width = 32;
+    canvas.height = 32;
     
-    // Set canvas size
-    canvas.width = frameSize * frameCount;
-    canvas.height = frameSize;
+    // Disable image smoothing for crisp pixel art
+    ctx.imageSmoothingEnabled = false;
     
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Generate each frame
-    for (let i = 0; i < frameCount; i++) {
-      const x = i * frameSize;
-      drawCharacterFrame(ctx, x, 0, frameSize, i, config);
-    }
+    drawClassicSprite(ctx, character, animationFrame);
     
-    setSpritesheet(canvas);
+    // Convert to data URL for export
+    setSpriteData(canvas.toDataURL());
+  }, [character, animationFrame]);
+
+  const drawClassicSprite = (ctx: CanvasRenderingContext2D, character: CharacterConfig, frame: number) => {
+    const centerX = 16;
+    const centerY = 16;
+    
+    // Animation offset for idle/walk cycles
+    const bobOffset = Math.sin(frame * 0.3) * 0.5;
+    const armSwing = Math.sin(frame * 0.4) * 2;
+    
+    // Draw shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(centerX - 6, 30, 12, 2);
+    
+    // Draw legs with animation
+    drawLegs(ctx, centerX, centerY + bobOffset, character.bodyColor, frame);
+    
+    // Draw body
+    drawBody(ctx, centerX, centerY - 4 + bobOffset, character.bodyColor);
+    
+    // Draw arms with swing animation
+    drawArms(ctx, centerX, centerY - 4 + bobOffset, character.skinColor, armSwing);
+    
+    // Draw head
+    drawHead(ctx, centerX, centerY - 10 + bobOffset, character.skinColor);
+    
+    // Draw hair
+    drawHair(ctx, centerX, centerY - 10 + bobOffset, character.hairColor, character.hairStyle);
+    
+    // Draw face
+    drawFace(ctx, centerX, centerY - 10 + bobOffset, character.skinColor);
+    
+    // Draw outfit details
+    drawOutfitDetails(ctx, centerX, centerY - 4 + bobOffset, character.outfitStyle);
   };
 
-  const getFrameCount = (animationType: string): number => {
-    switch (animationType) {
-      case 'walk': return 8;
-      case 'run': return 6;
-      case 'idle': return 4;
-      case 'jump': return 5;
-      default: return 8;
-    }
+  const drawPixelRect = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.floor(x), Math.floor(y), width, height);
   };
 
-  const drawCharacterFrame = (
-    ctx: CanvasRenderingContext2D, 
-    offsetX: number, 
-    offsetY: number, 
-    size: number, 
-    frame: number, 
-    config: CharacterConfig
-  ) => {
-    const centerX = offsetX + size / 2;
-    const centerY = offsetY + size / 2;
-    const scale = size / 64; // Base size is 64px
-
-    // Animation offsets
-    const animOffset = getAnimationOffset(frame, config.animationType);
-    
-    // Draw character based on style
-    if (config.style === 'pixel') {
-      drawPixelCharacter(ctx, centerX, centerY + animOffset.y, scale, frame, config);
-    } else {
-      drawVectorCharacter(ctx, centerX, centerY + animOffset.y, scale, frame, config, animOffset);
-    }
+  const drawPixel = (ctx: CanvasRenderingContext2D, x: number, y: number, color: string) => {
+    drawPixelRect(ctx, x, y, 1, 1, color);
   };
 
-  const getAnimationOffset = (frame: number, animationType: string) => {
-    switch (animationType) {
-      case 'walk':
-        return {
-          x: Math.sin(frame * Math.PI / 4) * 2,
-          y: Math.abs(Math.sin(frame * Math.PI / 4)) * 3
-        };
-      case 'run':
-        return {
-          x: Math.sin(frame * Math.PI / 3) * 4,
-          y: Math.abs(Math.sin(frame * Math.PI / 3)) * 5
-        };
-      case 'idle':
-        return {
-          x: 0,
-          y: Math.sin(frame * Math.PI / 2) * 2
-        };
-      case 'jump':
-        const jumpPhase = frame / 4;
-        return {
-          x: 0,
-          y: -Math.sin(jumpPhase * Math.PI) * 15
-        };
-      default:
-        return { x: 0, y: 0 };
-    }
-  };
-
-  const drawPixelCharacter = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    scale: number,
-    frame: number,
-    config: CharacterConfig
-  ) => {
-    const pixelSize = Math.max(1, Math.floor(scale * 2));
-    
-    // Disable smoothing for pixel art
-    ctx.imageSmoothingEnabled = false;
-    
-    // Head
-    ctx.fillStyle = config.bodyColor;
-    ctx.fillRect(x - 6 * pixelSize, y - 20 * pixelSize, 12 * pixelSize, 12 * pixelSize);
-    
-    // Hair
-    ctx.fillStyle = config.hairColor;
-    ctx.fillRect(x - 7 * pixelSize, y - 22 * pixelSize, 14 * pixelSize, 6 * pixelSize);
-    
-    // Body
-    ctx.fillStyle = config.clothingColor;
-    ctx.fillRect(x - 8 * pixelSize, y - 8 * pixelSize, 16 * pixelSize, 20 * pixelSize);
-    
-    // Arms (animated)
-    const armOffset = Math.sin(frame * Math.PI / 4) * 3 * pixelSize;
-    ctx.fillStyle = config.bodyColor;
-    ctx.fillRect(x - 12 * pixelSize, y - 6 * pixelSize + armOffset, 4 * pixelSize, 12 * pixelSize);
-    ctx.fillRect(x + 8 * pixelSize, y - 6 * pixelSize - armOffset, 4 * pixelSize, 12 * pixelSize);
-    
-    // Legs (animated)
-    const legOffset = Math.sin(frame * Math.PI / 4) * 4 * pixelSize;
-    ctx.fillRect(x - 6 * pixelSize + legOffset, y + 12 * pixelSize, 4 * pixelSize, 12 * pixelSize);
-    ctx.fillRect(x + 2 * pixelSize - legOffset, y + 12 * pixelSize, 4 * pixelSize, 12 * pixelSize);
-    
-    ctx.imageSmoothingEnabled = true;
-  };
-
-  const drawVectorCharacter = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    scale: number,
-    frame: number,
-    config: CharacterConfig,
-    animOffset: { x: number; y: number }
-  ) => {
-    // Head
-    ctx.fillStyle = config.bodyColor;
-    ctx.beginPath();
-    ctx.arc(x, y - 15 * scale, 8 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Hair
-    ctx.fillStyle = config.hairColor;
-    ctx.beginPath();
-    ctx.ellipse(x, y - 20 * scale, 10 * scale, 6 * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Body
-    ctx.fillStyle = config.clothingColor;
-    ctx.fillRect(x - 8 * scale, y - 7 * scale, 16 * scale, 20 * scale);
-    
-    // Fighting game-style energy aura (optional)
-    if (config.style === 'modern') {
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, 30 * scale);
-      gradient.addColorStop(0, 'rgba(255, 255, 0, 0.3)');
-      gradient.addColorStop(1, 'rgba(255, 0, 0, 0.1)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x - 20 * scale, y - 25 * scale, 40 * scale, 40 * scale);
-    }
-    
-    // Arms (animated)
-    const armAngle = Math.sin(frame * Math.PI / 4) * 0.5;
-    ctx.fillStyle = config.bodyColor;
-    
-    // Left arm
-    ctx.save();
-    ctx.translate(x - 10 * scale, y - 2 * scale);
-    ctx.rotate(armAngle);
-    ctx.fillRect(-2 * scale, -6 * scale, 4 * scale, 12 * scale);
-    ctx.restore();
-    
-    // Right arm
-    ctx.save();
-    ctx.translate(x + 10 * scale, y - 2 * scale);
-    ctx.rotate(-armAngle);
-    ctx.fillRect(-2 * scale, -6 * scale, 4 * scale, 12 * scale);
-    ctx.restore();
-    
-    // Legs (animated)
-    const legAngle = Math.sin(frame * Math.PI / 4) * 0.3;
+  const drawLegs = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, bodyColor: string, frame: number) => {
+    const legOffset = Math.sin(frame * 0.5) * 1;
     
     // Left leg
-    ctx.save();
-    ctx.translate(x - 4 * scale, y + 13 * scale);
-    ctx.rotate(legAngle);
-    ctx.fillRect(-3 * scale, 0, 6 * scale, 12 * scale);
-    ctx.restore();
+    drawPixelRect(ctx, centerX - 3, centerY + 4, 2, 6, bodyColor);
+    drawPixelRect(ctx, centerX - 3, centerY + 10, 3, 2, '#2D1B1B'); // boot
     
-    // Right leg
-    ctx.save();
-    ctx.translate(x + 4 * scale, y + 13 * scale);
-    ctx.rotate(-legAngle);
-    ctx.fillRect(-3 * scale, 0, 6 * scale, 12 * scale);
-    ctx.restore();
-    
-    // Eyes
-    ctx.fillStyle = '#000';
-    ctx.fillRect(x - 3 * scale, y - 17 * scale, 2 * scale, 2 * scale);
-    ctx.fillRect(x + 1 * scale, y - 17 * scale, 2 * scale, 2 * scale);
+    // Right leg  
+    drawPixelRect(ctx, centerX + 1 + legOffset, centerY + 4, 2, 6, bodyColor);
+    drawPixelRect(ctx, centerX + 1 + legOffset, centerY + 10, 3, 2, '#2D1B1B'); // boot
   };
 
-  const startAnimation = () => {
-    if (!animationRef.current) return;
+  const drawBody = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, bodyColor: string) => {
+    // Main body
+    drawPixelRect(ctx, centerX - 4, centerY - 2, 8, 8, bodyColor);
     
-    setIsAnimating(true);
-    const canvas = animationRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    canvas.width = config.size * 2;
-    canvas.height = config.size * 2;
-    
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      
-      drawCharacterFrame(ctx, centerX - config.size/2, centerY - config.size/2, config.size, frameRef.current, config);
-      
-      frameRef.current = (frameRef.current + 1) % getFrameCount(config.animationType);
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-    
-    animate();
+    // Body shading
+    drawPixelRect(ctx, centerX + 3, centerY - 2, 1, 8, darkenColor(bodyColor, 20));
+    drawPixelRect(ctx, centerX - 4, centerY + 5, 8, 1, darkenColor(bodyColor, 15));
   };
 
-  const stopAnimation = () => {
-    setIsAnimating(false);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
+  const drawArms = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string, swing: number) => {
+    // Left arm
+    drawPixelRect(ctx, centerX - 6, centerY, 2, 5, skinColor);
+    drawPixel(ctx, centerX - 6, centerY + 5, darkenColor(skinColor, 15));
+    
+    // Right arm with swing
+    drawPixelRect(ctx, centerX + 4 + swing * 0.5, centerY + swing * 0.3, 2, 5, skinColor);
+    drawPixel(ctx, centerX + 4 + swing * 0.5, centerY + 5 + swing * 0.3, darkenColor(skinColor, 15));
+  };
+
+  const drawHead = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string) => {
+    // Head shape
+    drawPixelRect(ctx, centerX - 4, centerY - 4, 8, 8, skinColor);
+    
+    // Head shading
+    drawPixelRect(ctx, centerX + 3, centerY - 4, 1, 8, darkenColor(skinColor, 15));
+    drawPixelRect(ctx, centerX - 4, centerY + 3, 8, 1, darkenColor(skinColor, 10));
+  };
+
+  const drawHair = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, hairColor: string, hairStyle: string) => {
+    switch (hairStyle) {
+      case 'spiky':
+        // Spiky hair points
+        drawPixel(ctx, centerX - 3, centerY - 6, hairColor);
+        drawPixel(ctx, centerX - 1, centerY - 7, hairColor);
+        drawPixel(ctx, centerX + 1, centerY - 6, hairColor);
+        drawPixel(ctx, centerX + 3, centerY - 5, hairColor);
+        drawPixelRect(ctx, centerX - 4, centerY - 5, 8, 2, hairColor);
+        break;
+      case 'long':
+        // Long flowing hair
+        drawPixelRect(ctx, centerX - 5, centerY - 5, 10, 3, hairColor);
+        drawPixelRect(ctx, centerX - 3, centerY + 4, 2, 3, hairColor);
+        drawPixelRect(ctx, centerX + 1, centerY + 4, 2, 4, hairColor);
+        break;
+      case 'curly':
+        // Curly/afro style
+        drawPixelRect(ctx, centerX - 5, centerY - 6, 10, 4, hairColor);
+        drawPixel(ctx, centerX - 6, centerY - 4, hairColor);
+        drawPixel(ctx, centerX + 5, centerY - 4, hairColor);
+        break;
+      default: // short
+        drawPixelRect(ctx, centerX - 4, centerY - 5, 8, 2, hairColor);
     }
+  };
+
+  const drawFace = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string) => {
+    // Eyes
+    drawPixel(ctx, centerX - 2, centerY - 2, '#000000');
+    drawPixel(ctx, centerX + 1, centerY - 2, '#000000');
+    
+    // Eye highlights
+    drawPixel(ctx, centerX - 2, centerY - 3, '#FFFFFF');
+    drawPixel(ctx, centerX + 1, centerY - 3, '#FFFFFF');
+    
+    // Nose (subtle)
+    drawPixel(ctx, centerX, centerY - 1, darkenColor(skinColor, 20));
+    
+    // Mouth
+    drawPixel(ctx, centerX - 1, centerY + 1, '#8B4513');
+    drawPixel(ctx, centerX, centerY + 1, '#8B4513');
+  };
+
+  const drawOutfitDetails = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, outfitStyle: string) => {
+    switch (outfitStyle) {
+      case 'warrior':
+        // Belt
+        drawPixelRect(ctx, centerX - 4, centerY + 2, 8, 1, '#8B4513');
+        // Armor plates
+        drawPixel(ctx, centerX - 2, centerY - 1, '#C0C0C0');
+        drawPixel(ctx, centerX + 1, centerY - 1, '#C0C0C0');
+        break;
+      case 'mage':
+        // Robe trim
+        drawPixelRect(ctx, centerX - 4, centerY - 2, 1, 8, '#DAA520');
+        drawPixelRect(ctx, centerX + 3, centerY - 2, 1, 8, '#DAA520');
+        drawPixelRect(ctx, centerX - 4, centerY + 5, 8, 1, '#DAA520');
+        break;
+      case 'rogue':
+        // Cloak
+        drawPixel(ctx, centerX - 5, centerY - 1, '#2F2F2F');
+        drawPixel(ctx, centerX + 4, centerY, '#2F2F2F');
+        break;
+    }
+  };
+
+  const darkenColor = (color: string, percent: number): string => {
+    // Simple color darkening function
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    const darkerR = Math.max(0, Math.floor(r * (100 - percent) / 100));
+    const darkerG = Math.max(0, Math.floor(g * (100 - percent) / 100));
+    const darkerB = Math.max(0, Math.floor(b * (100 - percent) / 100));
+    
+    return `#${darkerR.toString(16).padStart(2, '0')}${darkerG.toString(16).padStart(2, '0')}${darkerB.toString(16).padStart(2, '0')}`;
   };
 
   return (
-    <div className="bg-black/40 backdrop-blur-sm rounded-lg p-6 border border-cyan-400/30">
-      <h2 className="text-2xl font-bold text-yellow-400 mb-4 font-mono">SPRITE PREVIEW</h2>
-      
-      {/* Spritesheet Canvas */}
-      <div className="mb-6">
-        <h3 className="text-cyan-300 mb-2 font-mono text-sm">Spritesheet:</h3>
-        <div className="bg-black/50 p-4 rounded border border-purple-400/30 overflow-x-auto">
+    <div className="sprite-generator">
+      <div className="mb-4">
+        <h3 className="text-lg font-bold mb-2">Character Sprite</h3>
+        <div className="bg-gray-800 p-4 rounded-lg inline-block">
           <canvas 
             ref={canvasRef}
-            className="border border-gray-600 bg-gray-800"
-            style={{ imageRendering: config.style === 'pixel' ? 'pixelated' : 'auto' }}
+            className="pixelated border-2 border-gray-600"
+            style={{
+              imageRendering: 'pixelated',
+              imageRendering: '-moz-crisp-edges',
+              imageRendering: 'crisp-edges',
+              width: '128px',
+              height: '128px'
+            }}
           />
         </div>
       </div>
       
-      {/* Animation Preview */}
-      <div className="mb-4">
-        <h3 className="text-cyan-300 mb-2 font-mono text-sm">Animation Preview:</h3>
-        <div className="bg-black/50 p-4 rounded border border-purple-400/30 flex flex-col items-center">
-          <canvas 
-            ref={animationRef}
-            className="border border-gray-600 bg-gray-800 mb-4"
-            style={{ imageRendering: config.style === 'pixel' ? 'pixelated' : 'auto' }}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={startAnimation}
-              disabled={isAnimating}
-              className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:bg-gray-600 text-white rounded font-mono text-sm border border-green-400"
-            >
-              {isAnimating ? 'PLAYING' : 'PLAY'}
-            </button>
-            <button
-              onClick={stopAnimation}
-              disabled={!isAnimating}
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-gray-600 text-white rounded font-mono text-sm border border-red-400"
-            >
-              STOP
-            </button>
-          </div>
-        </div>
+      <div className="text-sm text-gray-400">
+        <p>32x32 pixel classic sprite</p>
+        <p>Late 90s RPG style</p>
       </div>
-      
-      <button
-        onClick={generateSpritesheet}
-        className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded font-mono font-bold border border-pink-400/50 transition-all duration-200"
-      >
-        REGENERATE SPRITE
-      </button>
     </div>
   );
 };
+
+export default SpriteGenerator;

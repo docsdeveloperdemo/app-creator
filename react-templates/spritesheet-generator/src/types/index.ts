@@ -1,13 +1,20 @@
-export interface User {
-  id: string
-  name: string
-  email: string
-  createdAt: Date
-  updatedAt: Date
+export interface CharacterConfig {
+  skinColor: string;
+  hairColor: string;
+  hairStyle: string;
+  bodyColor: string;
+  outfitStyle: string;
 }
 
-export interface ApiResponse<T> {
-  data: T
-  message: string
-  success: boolean
+export interface SpriteFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface AnimationSequence {
+  name: string;
+  frames: SpriteFrame[];
+  duration: number;
 }

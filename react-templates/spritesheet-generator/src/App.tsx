@@ -1,74 +1,98 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { SpriteGenerator } from './components/SpriteGenerator';
-import { CharacterCustomizer } from './components/CharacterCustomizer';
-import { ExportPanel } from './components/ExportPanel';
+import React, { useState, useEffect } from 'react';
+import CharacterCustomizer from './components/CharacterCustomizer';
+import SpriteGenerator from './components/SpriteGenerator';
+import ExportPanel from './components/ExportPanel';
+import { CharacterConfig } from './types';
 import './App.css';
 
-export interface CharacterConfig {
-  bodyColor: string;
-  hairColor: string;
-  clothingColor: string;
-  size: number;
-  style: 'classic' | 'modern' | 'pixel';
-  animationType: 'walk' | 'run' | 'idle' | 'jump';
-}
-
-const defaultConfig: CharacterConfig = {
-  bodyColor: '#F4C2A1',
-  hairColor: '#8B4513',
-  clothingColor: '#1E40AF',
-  size: 64,
-  style: 'classic',
-  animationType: 'walk'
-};
-
 function App() {
-  const [config, setConfig] = useState<CharacterConfig>(defaultConfig);
-  const [spritesheet, setSpritesheet] = useState<HTMLCanvasElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [character, setCharacter] = useState<CharacterConfig>({
+    skinColor: '#FDBCB4',
+    hairColor: '#8B4513',
+    hairStyle: 'short',
+    bodyColor: '#4682B4',
+    outfitStyle: 'casual'
+  });
+
+  const [animationFrame, setAnimationFrame] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  useEffect(() => {
+    if (!isAnimating) return;
+    
+    const interval = setInterval(() => {
+      setAnimationFrame(prev => prev + 1);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isAnimating]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      {/* Header */}
-      <div className="bg-black/30 backdrop-blur-sm border-b border-yellow-400/30">
-        <div className="container mx-auto px-6 py-4">
-          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-500 font-mono">
-            FIGHTING SPRITE GENERATOR
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <div className="container mx-auto px-4 py-8">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">
+            🎮 Fighting Sprite Generator
           </h1>
-          <p className="text-cyan-300 mt-2 font-mono text-sm">Create retro fighting game inspired character sprites</p>
-        </div>
-      </div>
+          <p className="text-gray-300 text-lg">
+            Create classic late 90s RPG-style character sprites
+          </p>
+        </header>
 
-      <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Character Customizer */}
           <div className="lg:col-span-1">
-            <CharacterCustomizer config={config} setConfig={setConfig} />
+            <div className="bg-gray-800 rounded-lg p-6 shadow-xl">
+              <CharacterCustomizer 
+                character={character} 
+                onCharacterChange={setCharacter} 
+              />
+            </div>
+            
+            {/* Animation Controls */}
+            <div className="bg-gray-800 rounded-lg p-6 shadow-xl mt-4">
+              <h3 className="text-lg font-bold text-white mb-4">Animation Controls</h3>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setIsAnimating(!isAnimating)}
+                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                    isAnimating 
+                      ? 'bg-red-600 hover:bg-red-700 text-white' 
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                >
+                  {isAnimating ? '⏸️ Pause' : '▶️ Play'}
+                </button>
+                <span className="text-gray-300">Frame: {animationFrame}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Sprite Generator */}
+          {/* Sprite Display */}
           <div className="lg:col-span-1">
-            <SpriteGenerator 
-              config={config} 
-              setSpritesheet={setSpritesheet}
-              canvasRef={canvasRef}
-            />
+            <div className="bg-gray-800 rounded-lg p-6 shadow-xl">
+              <SpriteGenerator 
+                character={character} 
+                animationFrame={animationFrame} 
+              />
+            </div>
           </div>
 
           {/* Export Panel */}
           <div className="lg:col-span-1">
-            <ExportPanel spritesheet={spritesheet} config={config} />
+            <div className="bg-gray-800 rounded-lg p-6 shadow-xl">
+              <ExportPanel 
+                character={character} 
+                animationFrame={animationFrame}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="bg-black/20 border-t border-yellow-400/30 mt-12">
-        <div className="container mx-auto px-6 py-4 text-center">
-          <p className="text-cyan-300/70 text-sm font-mono">
-            Inspired by classic arcade fighting games • Original character designs
-          </p>
-        </div>
+        {/* Footer */}
+        <footer className="text-center mt-12 text-gray-400">
+          <p>Classic 32x32 pixel art sprites • Retro gaming aesthetic</p>
+        </footer>
       </div>
     </div>
   );
