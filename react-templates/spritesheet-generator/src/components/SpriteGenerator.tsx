@@ -1,14 +1,246 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { CharacterConfig } from '../types';
+import React, { useRef, useEffect } from 'react';
 
-interface SpriteGeneratorProps {
-  character: CharacterConfig;
-  animationFrame: number;
+interface SpriteConfig {
+  skinColor: string;
+  hairColor: string;
+  hairStyle: string;
+  outfitColor: string;
+  outfitStyle: string;
 }
 
-const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ character, animationFrame }) => {
+interface SpriteGeneratorProps {
+  config: SpriteConfig;
+  isAnimating: boolean;
+  currentFrame: number;
+}
+
+const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ config, isAnimating, currentFrame }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [spriteData, setSpriteData] = useState<string>('');
+
+  // Default config fallback to prevent crashes
+  const safeConfig = {
+    skinColor: config?.skinColor || 'light',
+    hairColor: config?.hairColor || 'brown',
+    hairStyle: config?.hairStyle || 'Short',
+    outfitColor: config?.outfitColor || 'blue',
+    outfitStyle: config?.outfitStyle || 'Casual'
+  };
+
+  // Enhanced color palettes with shading
+  const skinTones = {
+    light: { base: '#FDBCB4', shadow: '#E8A194', highlight: '#FDD5CE' },
+    medium: { base: '#C68642', shadow: '#A66D32', highlight: '#D49A5A' },
+    tan: { base: '#D2B48C', shadow: '#B8956B', highlight: '#E5C99F' },
+    olive: { base: '#8D7053', shadow: '#6B5439', highlight: '#A68B6B' },
+    dark: { base: '#5D4037', shadow: '#3E2723', highlight: '#795548' }
+  };
+
+  const hairColors = {
+    blonde: { base: '#F4C430', shadow: '#D4A017', highlight: '#FFF380' },
+    brown: { base: '#8B4513', shadow: '#654321', highlight: '#A0522D' },
+    black: { base: '#2C1810', shadow: '#1A0E08', highlight: '#3E2723' },
+    red: { base: '#CC4125', shadow: '#A0251C', highlight: '#E85D3D' },
+    gray: { base: '#808080', shadow: '#606060', highlight: '#A0A0A0' },
+    purple: { base: '#8B008B', shadow: '#660066', highlight: '#B300B3' }
+  };
+
+  const outfitColors = {
+    blue: { base: '#1976D2', shadow: '#0D47A1', highlight: '#42A5F5' },
+    red: { base: '#D32F2F', shadow: '#B71C1C', highlight: '#EF5350' },
+    green: { base: '#388E3C', shadow: '#1B5E20', highlight: '#66BB6A' },
+    purple: { base: '#7B1FA2', shadow: '#4A148C', highlight: '#AB47BC' },
+    gray: { base: '#616161', shadow: '#424242', highlight: '#9E9E9E' },
+    brown: { base: '#5D4037', shadow: '#3E2723', highlight: '#8D6E63' }
+  };
+
+  const getSkinColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
+    const skinKey = safeConfig.skinColor as keyof typeof skinTones;
+    return skinTones[skinKey]?.[type] || skinTones.light[type];
+  };
+
+  const getHairColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
+    const hairKey = safeConfig.hairColor as keyof typeof hairColors;
+    return hairColors[hairKey]?.[type] || hairColors.brown[type];
+  };
+
+  const getOutfitColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
+    const outfitKey = safeConfig.outfitColor as keyof typeof outfitColors;
+    return outfitColors[outfitKey]?.[type] || outfitColors.blue[type];
+  };
+
+  const drawPixel = (ctx: CanvasRenderingContext2D, x: number, y: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, 1, 1);
+  };
+
+  const drawEnhancedCharacter = (ctx: CanvasRenderingContext2D) => {
+    // Clear canvas
+    ctx.clearRect(0, 0, 32, 32);
+    
+    // Animation offset for idle breathing
+    const breathOffset = isAnimating ? Math.sin(currentFrame * 0.3) * 0.5 : 0;
+    const baseY = Math.floor(breathOffset);
+
+    // Head (8x8) - Enhanced with shading
+    // Head outline and base
+    for (let y = 6 + baseY; y < 14 + baseY; y++) {
+      for (let x = 12; x < 20; x++) {
+        if ((y === 6 + baseY || y === 13 + baseY) && (x >= 13 && x <= 18)) {
+          drawPixel(ctx, x, y, getSkinColor('shadow'));
+        } else if ((x === 12 || x === 19) && (y >= 7 + baseY && y <= 12 + baseY)) {
+          drawPixel(ctx, x, y, getSkinColor('shadow'));
+        } else if (y >= 7 + baseY && y <= 12 + baseY && x >= 13 && x <= 18) {
+          // Face shading on right side
+          if (x >= 17) {
+            drawPixel(ctx, x, y, getSkinColor('shadow'));
+          } else {
+            drawPixel(ctx, x, y, getSkinColor('base'));
+          }
+        }
+      }
+    }
+
+    // Face highlights
+    drawPixel(ctx, 14, 7 + baseY, getSkinColor('highlight'));
+    drawPixel(ctx, 15, 7 + baseY, getSkinColor('highlight'));
+
+    // Eyes with more detail
+    drawPixel(ctx, 14, 9 + baseY, '#000000'); // Left eye
+    drawPixel(ctx, 17, 9 + baseY, '#000000'); // Right eye
+    drawPixel(ctx, 14, 8 + baseY, '#FFFFFF'); // Eye highlight
+    drawPixel(ctx, 17, 8 + baseY, '#FFFFFF'); // Eye highlight
+
+    // Nose (subtle)
+    drawPixel(ctx, 16, 10 + baseY, getSkinColor('shadow'));
+
+    // Mouth
+    drawPixel(ctx, 15, 11 + baseY, '#8B4513');
+    drawPixel(ctx, 16, 11 + baseY, '#8B4513');
+
+    // Enhanced Hair based on style
+    if (safeConfig.hairStyle === 'Short') {
+      // Short hair with texture
+      for (let y = 6 + baseY; y < 10 + baseY; y++) {
+        for (let x = 12; x < 20; x++) {
+          if ((y === 6 + baseY && x >= 13 && x <= 18) ||
+              (y === 7 + baseY && (x === 12 || x === 19 || (x >= 13 && x <= 18))) ||
+              (y === 8 + baseY && (x === 12 || x === 19)) ||
+              (y === 9 + baseY && (x === 12 || x === 19))) {
+            // Hair shading
+            if (x >= 17 || y >= 8 + baseY) {
+              drawPixel(ctx, x, y, getHairColor('shadow'));
+            } else {
+              drawPixel(ctx, x, y, getHairColor('base'));
+            }
+          }
+        }
+      }
+      // Hair highlights
+      drawPixel(ctx, 14, 6 + baseY, getHairColor('highlight'));
+      drawPixel(ctx, 15, 6 + baseY, getHairColor('highlight'));
+    }
+
+    // Enhanced Body (torso) with better shading
+    for (let y = 14 + baseY; y < 22 + baseY; y++) {
+      for (let x = 11; x < 21; x++) {
+        if (y >= 14 + baseY && y < 22 + baseY && x >= 12 && x <= 19) {
+          // Body shading on right side and bottom
+          if (x >= 18 || y >= 20 + baseY) {
+            drawPixel(ctx, x, y, getOutfitColor('shadow'));
+          } else if (x <= 13 && y <= 15 + baseY) {
+            drawPixel(ctx, x, y, getOutfitColor('highlight'));
+          } else {
+            drawPixel(ctx, x, y, getOutfitColor('base'));
+          }
+        }
+        // Arms with muscle definition
+        if ((x === 11 && y >= 16 + baseY && y <= 20 + baseY) ||
+            (x === 20 && y >= 16 + baseY && y <= 20 + baseY)) {
+          drawPixel(ctx, x, y, getOutfitColor('shadow'));
+        }
+      }
+    }
+
+    // Enhanced Arms with better form
+    // Left arm
+    for (let y = 16 + baseY; y < 21 + baseY; y++) {
+      drawPixel(ctx, 10, y, getSkinColor('shadow'));
+      drawPixel(ctx, 9, y, getSkinColor('base'));
+    }
+    // Right arm  
+    for (let y = 16 + baseY; y < 21 + baseY; y++) {
+      drawPixel(ctx, 21, y, getSkinColor('shadow'));
+      drawPixel(ctx, 22, y, getSkinColor('base'));
+    }
+
+    // Hands with detail
+    drawPixel(ctx, 9, 21 + baseY, getSkinColor('base'));
+    drawPixel(ctx, 8, 21 + baseY, getSkinColor('shadow'));
+    drawPixel(ctx, 22, 21 + baseY, getSkinColor('base'));
+    drawPixel(ctx, 23, 21 + baseY, getSkinColor('shadow'));
+
+    // Enhanced Legs with better proportions
+    for (let y = 22 + baseY; y < 28 + baseY; y++) {
+      // Left leg
+      for (let x = 13; x < 16; x++) {
+        if (x === 15 || y >= 26 + baseY) {
+          drawPixel(ctx, x, y, getOutfitColor('shadow'));
+        } else {
+          drawPixel(ctx, x, y, getOutfitColor('base'));
+        }
+      }
+      // Right leg
+      for (let x = 16; x < 19; x++) {
+        if (x >= 18 || y >= 26 + baseY) {
+          drawPixel(ctx, x, y, getOutfitColor('shadow'));
+        } else {
+          drawPixel(ctx, x, y, getOutfitColor('base'));
+        }
+      }
+    }
+
+    // Enhanced Feet with better detail
+    // Left foot
+    drawPixel(ctx, 12, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 13, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 14, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 15, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 11, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 12, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 13, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 14, 29 + baseY, '#1A0E08');
+    
+    // Right foot
+    drawPixel(ctx, 16, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 17, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 18, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 19, 28 + baseY, '#2C1810');
+    drawPixel(ctx, 17, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 18, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 19, 29 + baseY, '#1A0E08');
+    drawPixel(ctx, 20, 29 + baseY, '#1A0E08');
+
+    // Add some cool details
+    // Belt
+    drawPixel(ctx, 12, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 13, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 14, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 15, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 16, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 17, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 18, 21 + baseY, '#8B4513');
+    drawPixel(ctx, 19, 21 + baseY, '#8B4513');
+    
+    // Belt buckle
+    drawPixel(ctx, 15, 21 + baseY, '#FFD700');
+    drawPixel(ctx, 16, 21 + baseY, '#FFD700');
+
+    // Shirt details (buttons/seams)
+    drawPixel(ctx, 15, 16 + baseY, getOutfitColor('shadow'));
+    drawPixel(ctx, 16, 16 + baseY, getOutfitColor('shadow'));
+    drawPixel(ctx, 15, 18 + baseY, getOutfitColor('shadow'));
+    drawPixel(ctx, 16, 18 + baseY, getOutfitColor('shadow'));
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,208 +249,36 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ character, animationF
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size for classic sprite dimensions
-    canvas.width = 32;
-    canvas.height = 32;
-    
-    // Disable image smoothing for crisp pixel art
+    // Disable image smoothing for crisp pixels
     ctx.imageSmoothingEnabled = false;
     
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    drawClassicSprite(ctx, character, animationFrame);
-    
-    // Convert to data URL for export
-    setSpriteData(canvas.toDataURL());
-  }, [character, animationFrame]);
-
-  const drawClassicSprite = (ctx: CanvasRenderingContext2D, character: CharacterConfig, frame: number) => {
-    const centerX = 16;
-    const centerY = 16;
-    
-    // Animation offset for idle/walk cycles
-    const bobOffset = Math.sin(frame * 0.3) * 0.5;
-    const armSwing = Math.sin(frame * 0.4) * 2;
-    
-    // Draw shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-    ctx.fillRect(centerX - 6, 30, 12, 2);
-    
-    // Draw legs with animation
-    drawLegs(ctx, centerX, centerY + bobOffset, character.bodyColor, frame);
-    
-    // Draw body
-    drawBody(ctx, centerX, centerY - 4 + bobOffset, character.bodyColor);
-    
-    // Draw arms with swing animation
-    drawArms(ctx, centerX, centerY - 4 + bobOffset, character.skinColor, armSwing);
-    
-    // Draw head
-    drawHead(ctx, centerX, centerY - 10 + bobOffset, character.skinColor);
-    
-    // Draw hair
-    drawHair(ctx, centerX, centerY - 10 + bobOffset, character.hairColor, character.hairStyle);
-    
-    // Draw face
-    drawFace(ctx, centerX, centerY - 10 + bobOffset, character.skinColor);
-    
-    // Draw outfit details
-    drawOutfitDetails(ctx, centerX, centerY - 4 + bobOffset, character.outfitStyle);
-  };
-
-  const drawPixelRect = (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(Math.floor(x), Math.floor(y), width, height);
-  };
-
-  const drawPixel = (ctx: CanvasRenderingContext2D, x: number, y: number, color: string) => {
-    drawPixelRect(ctx, x, y, 1, 1, color);
-  };
-
-  const drawLegs = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, bodyColor: string, frame: number) => {
-    const legOffset = Math.sin(frame * 0.5) * 1;
-    
-    // Left leg
-    drawPixelRect(ctx, centerX - 3, centerY + 4, 2, 6, bodyColor);
-    drawPixelRect(ctx, centerX - 3, centerY + 10, 3, 2, '#2D1B1B'); // boot
-    
-    // Right leg  
-    drawPixelRect(ctx, centerX + 1 + legOffset, centerY + 4, 2, 6, bodyColor);
-    drawPixelRect(ctx, centerX + 1 + legOffset, centerY + 10, 3, 2, '#2D1B1B'); // boot
-  };
-
-  const drawBody = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, bodyColor: string) => {
-    // Main body
-    drawPixelRect(ctx, centerX - 4, centerY - 2, 8, 8, bodyColor);
-    
-    // Body shading
-    drawPixelRect(ctx, centerX + 3, centerY - 2, 1, 8, darkenColor(bodyColor, 20));
-    drawPixelRect(ctx, centerX - 4, centerY + 5, 8, 1, darkenColor(bodyColor, 15));
-  };
-
-  const drawArms = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string, swing: number) => {
-    // Left arm
-    drawPixelRect(ctx, centerX - 6, centerY, 2, 5, skinColor);
-    drawPixel(ctx, centerX - 6, centerY + 5, darkenColor(skinColor, 15));
-    
-    // Right arm with swing
-    drawPixelRect(ctx, centerX + 4 + swing * 0.5, centerY + swing * 0.3, 2, 5, skinColor);
-    drawPixel(ctx, centerX + 4 + swing * 0.5, centerY + 5 + swing * 0.3, darkenColor(skinColor, 15));
-  };
-
-  const drawHead = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string) => {
-    // Head shape
-    drawPixelRect(ctx, centerX - 4, centerY - 4, 8, 8, skinColor);
-    
-    // Head shading
-    drawPixelRect(ctx, centerX + 3, centerY - 4, 1, 8, darkenColor(skinColor, 15));
-    drawPixelRect(ctx, centerX - 4, centerY + 3, 8, 1, darkenColor(skinColor, 10));
-  };
-
-  const drawHair = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, hairColor: string, hairStyle: string) => {
-    switch (hairStyle) {
-      case 'spiky':
-        // Spiky hair points
-        drawPixel(ctx, centerX - 3, centerY - 6, hairColor);
-        drawPixel(ctx, centerX - 1, centerY - 7, hairColor);
-        drawPixel(ctx, centerX + 1, centerY - 6, hairColor);
-        drawPixel(ctx, centerX + 3, centerY - 5, hairColor);
-        drawPixelRect(ctx, centerX - 4, centerY - 5, 8, 2, hairColor);
-        break;
-      case 'long':
-        // Long flowing hair
-        drawPixelRect(ctx, centerX - 5, centerY - 5, 10, 3, hairColor);
-        drawPixelRect(ctx, centerX - 3, centerY + 4, 2, 3, hairColor);
-        drawPixelRect(ctx, centerX + 1, centerY + 4, 2, 4, hairColor);
-        break;
-      case 'curly':
-        // Curly/afro style
-        drawPixelRect(ctx, centerX - 5, centerY - 6, 10, 4, hairColor);
-        drawPixel(ctx, centerX - 6, centerY - 4, hairColor);
-        drawPixel(ctx, centerX + 5, centerY - 4, hairColor);
-        break;
-      default: // short
-        drawPixelRect(ctx, centerX - 4, centerY - 5, 8, 2, hairColor);
+    try {
+      drawEnhancedCharacter(ctx);
+    } catch (error) {
+      console.error('Error drawing character:', error);
+      // Draw a simple fallback character
+      ctx.fillStyle = '#FF0000';
+      ctx.fillRect(15, 15, 2, 2);
     }
-  };
-
-  const drawFace = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, skinColor: string) => {
-    // Eyes
-    drawPixel(ctx, centerX - 2, centerY - 2, '#000000');
-    drawPixel(ctx, centerX + 1, centerY - 2, '#000000');
-    
-    // Eye highlights
-    drawPixel(ctx, centerX - 2, centerY - 3, '#FFFFFF');
-    drawPixel(ctx, centerX + 1, centerY - 3, '#FFFFFF');
-    
-    // Nose (subtle)
-    drawPixel(ctx, centerX, centerY - 1, darkenColor(skinColor, 20));
-    
-    // Mouth
-    drawPixel(ctx, centerX - 1, centerY + 1, '#8B4513');
-    drawPixel(ctx, centerX, centerY + 1, '#8B4513');
-  };
-
-  const drawOutfitDetails = (ctx: CanvasRenderingContext2D, centerX: number, centerY: number, outfitStyle: string) => {
-    switch (outfitStyle) {
-      case 'warrior':
-        // Belt
-        drawPixelRect(ctx, centerX - 4, centerY + 2, 8, 1, '#8B4513');
-        // Armor plates
-        drawPixel(ctx, centerX - 2, centerY - 1, '#C0C0C0');
-        drawPixel(ctx, centerX + 1, centerY - 1, '#C0C0C0');
-        break;
-      case 'mage':
-        // Robe trim
-        drawPixelRect(ctx, centerX - 4, centerY - 2, 1, 8, '#DAA520');
-        drawPixelRect(ctx, centerX + 3, centerY - 2, 1, 8, '#DAA520');
-        drawPixelRect(ctx, centerX - 4, centerY + 5, 8, 1, '#DAA520');
-        break;
-      case 'rogue':
-        // Cloak
-        drawPixel(ctx, centerX - 5, centerY - 1, '#2F2F2F');
-        drawPixel(ctx, centerX + 4, centerY, '#2F2F2F');
-        break;
-    }
-  };
-
-  const darkenColor = (color: string, percent: number): string => {
-    // Simple color darkening function
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    const darkerR = Math.max(0, Math.floor(r * (100 - percent) / 100));
-    const darkerG = Math.max(0, Math.floor(g * (100 - percent) / 100));
-    const darkerB = Math.max(0, Math.floor(b * (100 - percent) / 100));
-    
-    return `#${darkerR.toString(16).padStart(2, '0')}${darkerG.toString(16).padStart(2, '0')}${darkerB.toString(16).padStart(2, '0')}`;
-  };
+  }, [safeConfig, isAnimating, currentFrame]);
 
   return (
-    <div className="sprite-generator">
-      <div className="mb-4">
-        <h3 className="text-lg font-bold mb-2">Character Sprite</h3>
-        <div className="bg-gray-800 p-4 rounded-lg inline-block">
-          <canvas 
+    <div className="bg-gray-800 rounded-lg p-6">
+      <h3 className="text-xl font-bold text-white mb-4">Character Sprite</h3>
+      <div className="flex justify-center mb-4">
+        <div className="bg-gray-700 p-4 rounded border-2 border-gray-600">
+          <canvas
             ref={canvasRef}
-            className="pixelated border-2 border-gray-600"
-            style={{
-              imageRendering: 'pixelated',
-              imageRendering: '-moz-crisp-edges',
-              imageRendering: 'crisp-edges',
-              width: '128px',
-              height: '128px'
-            }}
+            width={32}
+            height={32}
+            className="w-24 h-24"
+            style={{ imageRendering: 'pixelated' }}
           />
         </div>
       </div>
-      
-      <div className="text-sm text-gray-400">
-        <p>32x32 pixel classic sprite</p>
-        <p>Late 90s RPG style</p>
+      <div className="text-center text-gray-300">
+        <p className="text-sm">32x32 pixel enhanced sprite</p>
+        <p className="text-xs opacity-75">Late 90s RPG style with modern shading</p>
       </div>
     </div>
   );

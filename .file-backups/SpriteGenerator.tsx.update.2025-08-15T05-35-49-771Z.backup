@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 interface SpriteConfig {
   skinColor: string;
@@ -8,25 +8,16 @@ interface SpriteConfig {
   outfitStyle: string;
 }
 
-interface ExportPanelProps {
+interface SpriteGeneratorProps {
   config: SpriteConfig;
+  isAnimating: boolean;
   currentFrame: number;
 }
 
-const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
+const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({ config, isAnimating, currentFrame }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
 
-  // Default config fallback to prevent crashes
-  const safeConfig = {
-    skinColor: config?.skinColor || 'light',
-    hairColor: config?.hairColor || 'brown',
-    hairStyle: config?.hairStyle || 'Short',
-    outfitColor: config?.outfitColor || 'blue',
-    outfitStyle: config?.outfitStyle || 'Casual'
-  };
-
-  // Enhanced color palettes with shading (same as SpriteGenerator)
+  // Enhanced color palettes with shading
   const skinTones = {
     light: { base: '#FDBCB4', shadow: '#E8A194', highlight: '#FDD5CE' },
     medium: { base: '#C68642', shadow: '#A66D32', highlight: '#D49A5A' },
@@ -54,17 +45,17 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
   };
 
   const getSkinColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
-    const skinKey = safeConfig.skinColor as keyof typeof skinTones;
+    const skinKey = config.skinColor as keyof typeof skinTones;
     return skinTones[skinKey]?.[type] || skinTones.light[type];
   };
 
   const getHairColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
-    const hairKey = safeConfig.hairColor as keyof typeof hairColors;
+    const hairKey = config.hairColor as keyof typeof hairColors;
     return hairColors[hairKey]?.[type] || hairColors.brown[type];
   };
 
   const getOutfitColor = (type: 'base' | 'shadow' | 'highlight' = 'base') => {
-    const outfitKey = safeConfig.outfitColor as keyof typeof outfitColors;
+    const outfitKey = config.outfitColor as keyof typeof outfitColors;
     return outfitColors[outfitKey]?.[type] || outfitColors.blue[type];
   };
 
@@ -73,12 +64,12 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
     ctx.fillRect(x, y, 1, 1);
   };
 
-  const drawEnhancedCharacter = (ctx: CanvasRenderingContext2D, frameOffset = 0) => {
+  const drawEnhancedCharacter = (ctx: CanvasRenderingContext2D) => {
     // Clear canvas
     ctx.clearRect(0, 0, 32, 32);
     
     // Animation offset for idle breathing
-    const breathOffset = Math.sin(frameOffset * 0.3) * 0.5;
+    const breathOffset = isAnimating ? Math.sin(currentFrame * 0.3) * 0.5 : 0;
     const baseY = Math.floor(breathOffset);
 
     // Head (8x8) - Enhanced with shading
@@ -118,7 +109,7 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
     drawPixel(ctx, 16, 11 + baseY, '#8B4513');
 
     // Enhanced Hair based on style
-    if (safeConfig.hairStyle === 'Short') {
+    if (config.hairStyle === 'Short') {
       // Short hair with texture
       for (let y = 6 + baseY; y < 10 + baseY; y++) {
         for (let x = 12; x < 20; x++) {
@@ -242,7 +233,6 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
     drawPixel(ctx, 16, 18 + baseY, getOutfitColor('shadow'));
   };
 
-  // Update preview canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -253,147 +243,29 @@ const ExportPanel: React.FC<ExportPanelProps> = ({ config, currentFrame }) => {
     // Disable image smoothing for crisp pixels
     ctx.imageSmoothingEnabled = false;
     
-    try {
-      drawEnhancedCharacter(ctx, currentFrame);
-    } catch (error) {
-      console.error('Error drawing preview character:', error);
-      // Draw a simple fallback character
-      ctx.fillStyle = '#FF0000';
-      ctx.fillRect(15, 15, 2, 2);
-    }
-  }, [safeConfig, currentFrame]);
-
-  const downloadCurrentFrame = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      ctx.imageSmoothingEnabled = false;
-      drawEnhancedCharacter(ctx, currentFrame);
-      
-      // Create download link
-      const link = document.createElement('a');
-      link.download = `fighting-sprite-frame-${currentFrame}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    }
-  };
-
-  const generateFullSpritesheet = async () => {
-    setIsGenerating(true);
-    
-    try {
-      // Create a larger canvas for the full spritesheet
-      // 8 frames × 4 animations = 32 total frames
-      // Arrange as 8 columns × 4 rows
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; // 32 × 8
-      canvas.height = 128; // 32 × 4
-      const ctx = canvas.getContext('2d');
-      
-      if (ctx) {
-        ctx.imageSmoothingEnabled = false;
-        
-        // Generate different animation types
-        const animations = [
-          { name: 'idle', frames: 8 },
-          { name: 'walk', frames: 8 },
-          { name: 'attack', frames: 8 },
-          { name: 'hurt', frames: 8 }
-        ];
-        
-        let frameIndex = 0;
-        
-        for (let animRow = 0; animRow < 4; animRow++) {
-          for (let frameCol = 0; frameCol < 8; frameCol++) {
-            // Save current context
-            ctx.save();
-            
-            // Translate to the correct position in the spritesheet
-            ctx.translate(frameCol * 32, animRow * 32);
-            
-            // Draw character with frame variation
-            const animationOffset = frameIndex + (animRow * 10); // Different offset per animation
-            drawEnhancedCharacter(ctx, animationOffset);
-            
-            // Restore context
-            ctx.restore();
-            
-            frameIndex++;
-          }
-        }
-        
-        // Create download link
-        const link = document.createElement('a');
-        link.download = `fighting-sprite-spritesheet-${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      }
-    } catch (error) {
-      console.error('Error generating spritesheet:', error);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+    drawEnhancedCharacter(ctx);
+  }, [config, isAnimating, currentFrame]);
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-xl font-bold text-white mb-4">Export Options</h3>
-      
-      {/* Current Sprite Preview */}
-      <div className="mb-6">
-        <h4 className="text-lg font-semibold text-gray-300 mb-3">Current Sprite</h4>
-        <div className="flex justify-center mb-4">
-          <div className="bg-gray-700 p-4 rounded border-2 border-gray-600">
-            <canvas
-              ref={canvasRef}
-              width={32}
-              height={32}
-              className="w-16 h-16"
-              style={{ imageRendering: 'pixelated' }}
-            />
-          </div>
+      <h3 className="text-xl font-bold text-white mb-4">Character Sprite</h3>
+      <div className="flex justify-center mb-4">
+        <div className="bg-gray-700 p-4 rounded border-2 border-gray-600">
+          <canvas
+            ref={canvasRef}
+            width={32}
+            height={32}
+            className="w-24 h-24"
+            style={{ imageRendering: 'pixelated' }}
+          />
         </div>
       </div>
-
-      {/* Export Buttons */}
-      <div className="space-y-3 mb-6">
-        <button
-          onClick={downloadCurrentFrame}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-colors"
-        >
-          <span className="mr-2">📥</span>
-          Download Current Frame
-        </button>
-        
-        <button
-          onClick={generateFullSpritesheet}
-          disabled={isGenerating}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-colors"
-        >
-          <span className="mr-2">🎬</span>
-          {isGenerating ? 'Generating...' : 'Generate Full Spritesheet'}
-        </button>
-        
-        <p className="text-xs text-gray-400 text-center">
-          Creates 32 frames (8 frames × 4 animations)
-        </p>
-      </div>
-
-      {/* Export Info */}
-      <div className="bg-gray-700 p-4 rounded-lg">
-        <h4 className="text-md font-semibold text-gray-300 mb-2">Export Info</h4>
-        <ul className="text-sm text-gray-400 space-y-1">
-          <li>• Format: PNG with transparency</li>
-          <li>• Size: 32×32 pixels per frame</li>
-          <li>• Style: Late 90s pixel art</li>
-          <li>• Spritesheet: 256×128 total size</li>
-        </ul>
+      <div className="text-center text-gray-300">
+        <p className="text-sm">32x32 pixel enhanced sprite</p>
+        <p className="text-xs opacity-75">Late 90s RPG style with modern shading</p>
       </div>
     </div>
   );
 };
 
-export default ExportPanel;
+export default SpriteGenerator;

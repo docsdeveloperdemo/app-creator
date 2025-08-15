@@ -1,0 +1,13 @@
+Branch Metadata
+===============
+Branch Name: app/fighting-sprite-generator-enhanced
+Created/Updated: 2025-08-15T05:50:58.977Z
+Author: User
+Purpose: Application Save
+Description: Professional fighting sprite generator with enhanced pixel art, shading system, animation controls, and export functionality. Features unified visual style, customizable characters, and breathing animations.
+
+Status: New branch created
+
+---
+This file contains metadata about the branch and its purpose.
+It helps track branch information and development context.

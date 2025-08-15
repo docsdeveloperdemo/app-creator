@@ -1,131 +1,171 @@
 import React from 'react';
-import { CharacterConfig } from '../types';
 
-interface CharacterCustomizerProps {
-  character: CharacterConfig;
-  onCharacterChange: (character: CharacterConfig) => void;
+interface SpriteConfig {
+  skinColor: string;
+  hairColor: string;
+  hairStyle: string;
+  outfitColor: string;
+  outfitStyle: string;
 }
 
-const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, onCharacterChange }) => {
-  const updateCharacter = (field: keyof CharacterConfig, value: string) => {
-    onCharacterChange({ ...character, [field]: value });
+interface CharacterCustomizerProps {
+  config: SpriteConfig;
+  onConfigChange: (newConfig: Partial<SpriteConfig>) => void;
+}
+
+const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ config, onConfigChange }) => {
+  // Safe config with fallbacks
+  const safeConfig = {
+    skinColor: config?.skinColor || 'light',
+    hairColor: config?.hairColor || 'brown',
+    hairStyle: config?.hairStyle || 'Short',
+    outfitColor: config?.outfitColor || 'blue',
+    outfitStyle: config?.outfitStyle || 'Casual'
   };
 
+  const skinColors = [
+    { name: 'Light', value: 'light', color: '#FDBCB4' },
+    { name: 'Medium', value: 'medium', color: '#C68642' },
+    { name: 'Tan', value: 'tan', color: '#D2B48C' },
+    { name: 'Olive', value: 'olive', color: '#8D7053' },
+    { name: 'Dark', value: 'dark', color: '#5D4037' }
+  ];
+
+  const hairColors = [
+    { name: 'Blonde', value: 'blonde', color: '#F4C430' },
+    { name: 'Brown', value: 'brown', color: '#8B4513' },
+    { name: 'Black', value: 'black', color: '#2C1810' },
+    { name: 'Red', value: 'red', color: '#CC4125' },
+    { name: 'Gray', value: 'gray', color: '#808080' },
+    { name: 'Purple', value: 'purple', color: '#8B008B' }
+  ];
+
+  const outfitColors = [
+    { name: 'Blue', value: 'blue', color: '#1976D2' },
+    { name: 'Green', value: 'green', color: '#388E3C' },
+    { name: 'Red', value: 'red', color: '#D32F2F' },
+    { name: 'Purple', value: 'purple', color: '#7B1FA2' },
+    { name: 'Gray', value: 'gray', color: '#616161' },
+    { name: 'Brown', value: 'brown', color: '#5D4037' }
+  ];
+
+  const hairStyles = [
+    { name: 'Short', value: 'Short' },
+    { name: 'Long', value: 'Long' },
+    { name: 'Curly', value: 'Curly' },
+    { name: 'Spiky', value: 'Spiky' }
+  ];
+
+  const outfitStyles = [
+    { name: 'Casual', value: 'Casual' },
+    { name: 'Formal', value: 'Formal' },
+    { name: 'Armor', value: 'Armor' },
+    { name: 'Robe', value: 'Robe' }
+  ];
+
   return (
-    <div className="character-customizer">
-      <h3 className="text-lg font-bold text-white mb-4">Character Customizer</h3>
+    <div className="bg-gray-800 rounded-lg p-6">
+      <h3 className="text-xl font-bold text-white mb-6">Character Customizer</h3>
       
       {/* Skin Color */}
-      <div className="mb-4">
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Skin Color
         </label>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { color: '#FDBCB4', name: 'Light' },
-            { color: '#F1C27D', name: 'Medium' },
-            { color: '#E0AC69', name: 'Tan' },
-            { color: '#C68642', name: 'Dark' },
-            { color: '#8D5524', name: 'Deep' }
-          ].map(({ color, name }) => (
+        <div className="grid grid-cols-5 gap-2">
+          {skinColors.map((skin) => (
             <button
-              key={color}
-              onClick={() => updateCharacter('skinColor', color)}
-              className={`w-8 h-8 rounded border-2 ${
-                character.skinColor === color ? 'border-white' : 'border-gray-600'
+              key={skin.value}
+              onClick={() => onConfigChange({ skinColor: skin.value })}
+              className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                safeConfig.skinColor === skin.value
+                  ? 'border-white scale-110'
+                  : 'border-gray-600 hover:border-gray-400'
               }`}
-              style={{ backgroundColor: color }}
-              title={name}
+              style={{ backgroundColor: skin.color }}
+              title={skin.name}
             />
           ))}
         </div>
       </div>
 
       {/* Hair Color */}
-      <div className="mb-4">
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Hair Color
         </label>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { color: '#8B4513', name: 'Brown' },
-            { color: '#000000', name: 'Black' },
-            { color: '#FFD700', name: 'Blonde' },
-            { color: '#B22222', name: 'Red' },
-            { color: '#708090', name: 'Silver' },
-            { color: '#4B0082', name: 'Purple' }
-          ].map(({ color, name }) => (
+        <div className="grid grid-cols-6 gap-2">
+          {hairColors.map((hair) => (
             <button
-              key={color}
-              onClick={() => updateCharacter('hairColor', color)}
-              className={`w-8 h-8 rounded border-2 ${
-                character.hairColor === color ? 'border-white' : 'border-gray-600'
+              key={hair.value}
+              onClick={() => onConfigChange({ hairColor: hair.value })}
+              className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                safeConfig.hairColor === hair.value
+                  ? 'border-white scale-110'
+                  : 'border-gray-600 hover:border-gray-400'
               }`}
-              style={{ backgroundColor: color }}
-              title={name}
+              style={{ backgroundColor: hair.color }}
+              title={hair.name}
             />
           ))}
         </div>
       </div>
 
       {/* Hair Style */}
-      <div className="mb-4">
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Hair Style
         </label>
-        <select 
-          value={character.hairStyle} 
-          onChange={(e) => updateCharacter('hairStyle', e.target.value)}
-          className="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2"
+        <select
+          value={safeConfig.hairStyle}
+          onChange={(e) => onConfigChange({ hairStyle: e.target.value })}
+          className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
         >
-          <option value="short">Short</option>
-          <option value="long">Long</option>
-          <option value="spiky">Spiky</option>
-          <option value="curly">Curly</option>
+          {hairStyles.map((style) => (
+            <option key={style.value} value={style.value}>
+              {style.name}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Body/Outfit Color */}
-      <div className="mb-4">
+      {/* Outfit Color */}
+      <div className="mb-6">
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Outfit Color
         </label>
-        <div className="flex gap-2 flex-wrap">
-          {[
-            { color: '#4682B4', name: 'Blue' },
-            { color: '#228B22', name: 'Green' },
-            { color: '#DC143C', name: 'Red' },
-            { color: '#800080', name: 'Purple' },
-            { color: '#2F4F4F', name: 'Dark Gray' },
-            { color: '#8B4513', name: 'Brown' }
-          ].map(({ color, name }) => (
+        <div className="grid grid-cols-6 gap-2">
+          {outfitColors.map((outfit) => (
             <button
-              key={color}
-              onClick={() => updateCharacter('bodyColor', color)}
-              className={`w-8 h-8 rounded border-2 ${
-                character.bodyColor === color ? 'border-white' : 'border-gray-600'
+              key={outfit.value}
+              onClick={() => onConfigChange({ outfitColor: outfit.value })}
+              className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                safeConfig.outfitColor === outfit.value
+                  ? 'border-white scale-110'
+                  : 'border-gray-600 hover:border-gray-400'
               }`}
-              style={{ backgroundColor: color }}
-              title={name}
+              style={{ backgroundColor: outfit.color }}
+              title={outfit.name}
             />
           ))}
         </div>
       </div>
 
       {/* Outfit Style */}
-      <div className="mb-4">
+      <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
           Outfit Style
         </label>
-        <select 
-          value={character.outfitStyle} 
-          onChange={(e) => updateCharacter('outfitStyle', e.target.value)}
-          className="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2"
+        <select
+          value={safeConfig.outfitStyle}
+          onChange={(e) => onConfigChange({ outfitStyle: e.target.value })}
+          className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
         >
-          <option value="casual">Casual</option>
-          <option value="warrior">Warrior</option>
-          <option value="mage">Mage</option>
-          <option value="rogue">Rogue</option>
+          {outfitStyles.map((style) => (
+            <option key={style.value} value={style.value}>
+              {style.name}
+            </option>
+          ))}
         </select>
       </div>
     </div>
