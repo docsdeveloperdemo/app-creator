@@ -1,0 +1,223 @@
+import React, { useEffect, useRef } from 'react';
+import { SpriteSettings } from '../types';
+
+interface SpriteGeneratorProps {
+  settings: SpriteSettings;
+  currentFrame: number;
+  onSpriteGenerated: (canvas: HTMLCanvasElement) => void;
+}
+
+export const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
+  settings,
+  currentFrame,
+  onSpriteGenerated
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set canvas size
+    canvas.width = 32;
+    canvas.height = 32;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, 32, 32);
+    
+    // Disable image smoothing for pixel art
+    ctx.imageSmoothingEnabled = false;
+
+    // Generate walking sprite with proper leg movement
+    generateWalkingSprite(ctx, settings, currentFrame);
+    
+    // Notify parent component
+    onSpriteGenerated(canvas);
+  }, [settings, currentFrame, onSpriteGenerated]);
+
+  const generateWalkingSprite = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, frame: number) => {
+    // Walking animation has 4 frames per cycle
+    const walkCycle = frame % 4;
+    
+    // Calculate vertical bob (slight up/down movement while walking)
+    const bobOffset = walkCycle === 1 || walkCycle === 3 ? -1 : 0;
+    
+    // Base character position
+    const baseY = 8 + bobOffset;
+    
+    // Draw character layers from bottom to top
+    drawLegs(ctx, settings, walkCycle, baseY);
+    drawTorso(ctx, settings, baseY);
+    drawArms(ctx, settings, walkCycle, baseY);
+    drawHead(ctx, settings, baseY);
+    drawHair(ctx, settings, baseY);
+  };
+
+  const drawLegs = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, walkCycle: number, baseY: number) => {
+    // Leg positions based on walk cycle
+    let leftLegX = 13, rightLegX = 17;
+    let leftLegY = baseY + 14, rightLegY = baseY + 14;
+    
+    // Walking leg animation
+    switch (walkCycle) {
+      case 0: // Standing/neutral
+        break;
+      case 1: // Left leg forward, right leg back
+        leftLegX = 14;
+        rightLegX = 16;
+        leftLegY = baseY + 13;
+        rightLegY = baseY + 15;
+        break;
+      case 2: // Both legs together (passing position)
+        break;
+      case 3: // Right leg forward, left leg back  
+        leftLegX = 12;
+        rightLegX = 18;
+        leftLegY = baseY + 15;
+        rightLegY = baseY + 13;
+        break;
+    }
+    
+    // Draw legs (2x4 pixels each)
+    ctx.fillStyle = settings.skinColor;
+    
+    // Left leg
+    ctx.fillRect(leftLegX, leftLegY, 2, 4);
+    // Right leg  
+    ctx.fillRect(rightLegX, rightLegY, 2, 4);
+    
+    // Add simple shoes/feet
+    ctx.fillStyle = '#2D2D2D';
+    ctx.fillRect(leftLegX - 1, leftLegY + 3, 4, 2);
+    ctx.fillRect(rightLegX - 1, rightLegY + 3, 4, 2);
+  };
+
+  const drawTorso = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, baseY: number) => {
+    // Main torso (6x8 pixels)
+    ctx.fillStyle = settings.outfitColor;
+    ctx.fillRect(12, baseY + 6, 8, 8);
+    
+    // Add some shading for depth
+    ctx.fillStyle = darkenColor(settings.outfitColor, 0.2);
+    ctx.fillRect(19, baseY + 6, 1, 8); // Right edge shadow
+    ctx.fillRect(12, baseY + 13, 8, 1); // Bottom shadow
+  };
+
+  const drawArms = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, walkCycle: number, baseY: number) => {
+    let leftArmX = 10, rightArmX = 21;
+    let leftArmY = baseY + 7, rightArmY = baseY + 7;
+    
+    // Arm swinging animation (opposite to legs)
+    switch (walkCycle) {
+      case 0: // Neutral
+        break;
+      case 1: // Right arm forward (opposite of left leg)
+        rightArmX = 20;
+        leftArmX = 11;
+        break;
+      case 2: // Neutral passing
+        break;
+      case 3: // Left arm forward (opposite of right leg)
+        leftArmX = 9;
+        rightArmX = 22;
+        break;
+    }
+    
+    // Draw arms
+    ctx.fillStyle = settings.skinColor;
+    ctx.fillRect(leftArmX, leftArmY, 2, 6);
+    ctx.fillRect(rightArmX, rightArmY, 2, 6);
+  };
+
+  const drawHead = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, baseY: number) => {
+    // Head (6x6 pixels)
+    ctx.fillStyle = settings.skinColor;
+    ctx.fillRect(13, baseY, 6, 6);
+    
+    // Eyes
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(14, baseY + 2, 1, 1);
+    ctx.fillRect(17, baseY + 2, 1, 1);
+    
+    // Simple mouth
+    ctx.fillRect(15, baseY + 4, 2, 1);
+    
+    // Add head shading
+    ctx.fillStyle = darkenColor(settings.skinColor, 0.15);
+    ctx.fillRect(18, baseY, 1, 6); // Right edge
+    ctx.fillRect(13, baseY + 5, 6, 1); // Bottom edge
+  };
+
+  const drawHair = (ctx: CanvasRenderingContext2D, settings: SpriteSettings, baseY: number) => {
+    ctx.fillStyle = settings.hairColor;
+    
+    // Hair style based on settings
+    switch (settings.hairStyle) {
+      case 'short':
+        // Short hair - covers top and sides of head
+        ctx.fillRect(13, baseY - 1, 6, 2); // Top
+        ctx.fillRect(12, baseY, 1, 3); // Left side
+        ctx.fillRect(19, baseY, 1, 3); // Right side
+        break;
+      case 'long':
+        // Long hair - extends down
+        ctx.fillRect(13, baseY - 1, 6, 2); // Top
+        ctx.fillRect(12, baseY, 1, 6); // Left side
+        ctx.fillRect(19, baseY, 1, 6); // Right side
+        ctx.fillRect(11, baseY + 4, 1, 3); // Left extension
+        ctx.fillRect(20, baseY + 4, 1, 3); // Right extension
+        break;
+      case 'spiky':
+        // Spiky hair - jagged top
+        ctx.fillRect(13, baseY - 2, 1, 1); // Spike 1
+        ctx.fillRect(15, baseY - 2, 1, 1); // Spike 2  
+        ctx.fillRect(17, baseY - 2, 1, 1); // Spike 3
+        ctx.fillRect(13, baseY - 1, 6, 2); // Base
+        ctx.fillRect(12, baseY, 1, 2); // Left side
+        ctx.fillRect(19, baseY, 1, 2); // Right side
+        break;
+      default:
+        // Default short hair
+        ctx.fillRect(13, baseY - 1, 6, 2);
+        ctx.fillRect(12, baseY, 1, 3);
+        ctx.fillRect(19, baseY, 1, 3);
+    }
+  };
+
+  const darkenColor = (color: string, amount: number): string => {
+    // Simple color darkening function
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    const newR = Math.max(0, Math.floor(r * (1 - amount)));
+    const newG = Math.max(0, Math.floor(g * (1 - amount)));
+    const newB = Math.max(0, Math.floor(b * (1 - amount)));
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <canvas
+        ref={canvasRef}
+        className="border border-gray-700 bg-gray-800"
+        style={{
+          width: '96px',
+          height: '96px',
+          imageRendering: 'pixelated'
+        }}
+      />
+      <p className="text-sm text-gray-400 mt-2">
+        32x32 pixel enhanced sprite
+      </p>
+      <p className="text-xs text-gray-500">
+        Late 90s RPG style with modern shading
+      </p>
+    </div>
+  );
+};

@@ -20,12 +20,6 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
 
   // Enhanced walking animation with proper leg movement and body bob
   const generateWalkingFrame = (ctx: CanvasRenderingContext2D, frameIndex: number, direction: 'down' | 'up' | 'left' | 'right') => {
-    // Safety check for character object
-    if (!character || !character.skinColor) {
-      console.warn('Character object is undefined or missing properties');
-      return;
-    }
-
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, 32, 32);
     
@@ -63,11 +57,10 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
       }
     }
 
-    // Character base colors with defaults
-    const skinColor = character.skinColor || '#FFDBAC';
-    const hairColor = character.hairColor || '#8B4513';
-    const outfitColor = character.outfitColor || '#4A90E2';
-    const hairStyle = character.hairStyle || 'short';
+    // Character base colors
+    const skinColor = character.skinColor;
+    const hairColor = character.hairColor;
+    const outfitColor = character.outfitColor;
     
     // Shadow colors (darker versions)
     const skinShadow = darkenColor(skinColor, 0.3);
@@ -91,7 +84,7 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
     drawHead(ctx, direction, baseY - 2, skinColor, skinShadow);
     
     // Draw hair
-    drawHair(ctx, direction, baseY - 2, hairStyle, hairColor, hairShadow);
+    drawHair(ctx, direction, baseY - 2, character.hairStyle, hairColor, hairShadow);
     
     // Add facial features
     drawFace(ctx, direction, baseY - 2);
@@ -302,12 +295,6 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Safety check for character
-    if (!character) {
-      console.warn('Character object is undefined, skipping rendering');
-      return;
-    }
-
     // Determine direction and frame within that direction
     const directions = ['down', 'left', 'right', 'up'] as const;
     const directionIndex = Math.floor(currentFrame / 8);
@@ -316,21 +303,6 @@ const SpriteGenerator: React.FC<SpriteGeneratorProps> = ({
 
     generateWalkingFrame(ctx, frameInDirection, direction);
   }, [character, currentFrame]);
-
-  // Don't render if character is not provided
-  if (!character) {
-    return (
-      <div className="bg-gray-700 p-4 rounded-lg">
-        <h3 className="text-white text-lg font-bold mb-4">Character Sprite</h3>
-        <div className="bg-gray-600 p-4 rounded">
-          <div className="border-2 border-gray-400 bg-gray-500 flex items-center justify-center" 
-               style={{width: '128px', height: '128px'}}>
-            <p className="text-gray-300 text-sm">Loading character...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-gray-700 p-4 rounded-lg">
