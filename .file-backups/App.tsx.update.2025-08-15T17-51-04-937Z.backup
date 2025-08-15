@@ -7,10 +7,10 @@ import './App.css';
 
 function App() {
   const [character, setCharacter] = useState<Character>({
-    skinColor: 'light',
-    hairColor: 'brown',
+    skinColor: '#FFDBAC',
+    hairColor: '#8B4513',
     hairStyle: 'Short',
-    outfitColor: 'blue',
+    outfitColor: '#4A90E2',
     outfitStyle: 'Casual'
   });
   

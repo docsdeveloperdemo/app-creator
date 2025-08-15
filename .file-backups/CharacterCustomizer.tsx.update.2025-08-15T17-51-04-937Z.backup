@@ -1,19 +1,26 @@
 import React from 'react';
-import { Character } from '../types';
 
-interface CharacterCustomizerProps {
-  character: Character;
-  onCharacterChange: (newCharacter: Partial<Character>) => void;
+interface SpriteConfig {
+  skinColor: string;
+  hairColor: string;
+  hairStyle: string;
+  outfitColor: string;
+  outfitStyle: string;
 }
 
-const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, onCharacterChange }) => {
-  // Safe character with fallbacks
-  const safeCharacter = {
-    skinColor: character?.skinColor || 'light',
-    hairColor: character?.hairColor || 'brown',
-    hairStyle: character?.hairStyle || 'Short',
-    outfitColor: character?.outfitColor || 'blue',
-    outfitStyle: character?.outfitStyle || 'Casual'
+interface CharacterCustomizerProps {
+  config: SpriteConfig;
+  onConfigChange: (newConfig: Partial<SpriteConfig>) => void;
+}
+
+const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ config, onConfigChange }) => {
+  // Safe config with fallbacks
+  const safeConfig = {
+    skinColor: config?.skinColor || 'light',
+    hairColor: config?.hairColor || 'brown',
+    hairStyle: config?.hairStyle || 'Short',
+    outfitColor: config?.outfitColor || 'blue',
+    outfitStyle: config?.outfitStyle || 'Casual'
   };
 
   const skinColors = [
@@ -69,9 +76,9 @@ const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, on
           {skinColors.map((skin) => (
             <button
               key={skin.value}
-              onClick={() => onCharacterChange({ skinColor: skin.value })}
+              onClick={() => onConfigChange({ skinColor: skin.value })}
               className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                safeCharacter.skinColor === skin.value
+                safeConfig.skinColor === skin.value
                   ? 'border-white scale-110'
                   : 'border-gray-600 hover:border-gray-400'
               }`}
@@ -91,9 +98,9 @@ const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, on
           {hairColors.map((hair) => (
             <button
               key={hair.value}
-              onClick={() => onCharacterChange({ hairColor: hair.value })}
+              onClick={() => onConfigChange({ hairColor: hair.value })}
               className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                safeCharacter.hairColor === hair.value
+                safeConfig.hairColor === hair.value
                   ? 'border-white scale-110'
                   : 'border-gray-600 hover:border-gray-400'
               }`}
@@ -110,8 +117,8 @@ const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, on
           Hair Style
         </label>
         <select
-          value={safeCharacter.hairStyle}
-          onChange={(e) => onCharacterChange({ hairStyle: e.target.value })}
+          value={safeConfig.hairStyle}
+          onChange={(e) => onConfigChange({ hairStyle: e.target.value })}
           className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
         >
           {hairStyles.map((style) => (
@@ -131,9 +138,9 @@ const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, on
           {outfitColors.map((outfit) => (
             <button
               key={outfit.value}
-              onClick={() => onCharacterChange({ outfitColor: outfit.value })}
+              onClick={() => onConfigChange({ outfitColor: outfit.value })}
               className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                safeCharacter.outfitColor === outfit.value
+                safeConfig.outfitColor === outfit.value
                   ? 'border-white scale-110'
                   : 'border-gray-600 hover:border-gray-400'
               }`}
@@ -150,8 +157,8 @@ const CharacterCustomizer: React.FC<CharacterCustomizerProps> = ({ character, on
           Outfit Style
         </label>
         <select
-          value={safeCharacter.outfitStyle}
-          onChange={(e) => onCharacterChange({ outfitStyle: e.target.value })}
+          value={safeConfig.outfitStyle}
+          onChange={(e) => onConfigChange({ outfitStyle: e.target.value })}
           className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
         >
           {outfitStyles.map((style) => (
